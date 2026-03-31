@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Explore Transformations | Veriba Gallery</title>
+    <meta
+      name="description"
+      content="Search the Veriba public gallery by treatment, location, and provider."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body data-page="gallery">
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Gallery</span>
+          </a>
+          <nav class="site-nav" aria-label="Primary">
+            <a data-nav-link href="/">Home</a>
+            <a data-nav-link href="/gallery/">Explore</a>
+            <a href="/medspa/">For Medspas</a>
+            <a href="/#providers">Providers</a>
+            <a href="/#trust">Why Veriba</a>
+          </nav>
+          <a class="site-header__cta" href="/">
+            <span class="material-symbols-outlined">west</span>
+            <span>Back home</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <section class="section">
+          <span class="eyebrow">Refined results</span>
+          <div class="section-head">
+            <div class="section-head__copy">
+              <h1 class="headline-lg">Search the live public archive.</h1>
+              <p>
+                Filter published transformations by treatment, provider, or location. The layout is
+                intentionally quiet so the image pairs and provider context can carry the page.
+              </p>
+            </div>
+          </div>
+
+          <div class="search-shell">
+            <form class="search-form" id="gallery-search-form">
+              <label class="field field--icon">
+                <span class="field__icon material-symbols-outlined">search</span>
+                <input
+                  id="gallery-query"
+                  type="search"
+                  name="q"
+                  placeholder="Search procedures or providers..."
+                />
+              </label>
+              <label class="field">
+                <select id="gallery-category" name="category">
+                  <option value="">All treatments</option>
+                </select>
+              </label>
+              <label class="field">
+                <input
+                  id="gallery-location"
+                  type="text"
+                  name="location"
+                  placeholder="City or region"
+                />
+              </label>
+              <button class="button-primary" type="submit">Update gallery</button>
+            </form>
+            <div class="chip-row">
+              <span class="chip">Editorial layout</span>
+              <span class="chip">Warm tonal layering</span>
+              <span class="chip">Published medspa results</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="results-shell">
+          <div class="toolbar">
+            <p class="results-summary" id="results-summary">Loading public cases...</p>
+          </div>
+          <div class="cases-grid" id="gallery-results"></div>
+          <div class="section" style="text-align: center">
+            <button class="button-secondary" id="gallery-load-more" hidden type="button">
+              Load more transformations
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Gallery</span>
+          </a>
+          <div class="site-footer__meta">
+            <span>Public aesthetic outcomes, presented editorially.</span>
+            <a href="/">Home</a>
+            <a href="/medspa/">Medspa studio</a>
+            <span>&copy; 2026 Veriba</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/assets/site.js"></script>
+  </body>
+</html>

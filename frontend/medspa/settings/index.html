@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Medspa Settings | Veriba Studio</title>
+    <meta
+      name="description"
+      content="Practice settings and account management for Veriba medspa partners."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/medspa.css" />
+  </head>
+  <body data-page="medspa-settings">
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Studio</span>
+          </a>
+          <nav class="site-nav" aria-label="Primary">
+            <a href="/">Public home</a>
+            <a href="/gallery/">Explore gallery</a>
+            <a href="/medspa/" aria-current="page">Medspa studio</a>
+          </nav>
+          <a class="site-header__cta" href="/medspa/">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Studio overview</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <section class="medspa-auth" id="medspa-auth-shell">
+          <div class="medspa-auth__grid">
+            <div class="medspa-auth__copy">
+              <span class="eyebrow">Practice controls</span>
+              <h1 class="headline-lg">Keep the public-facing profile and team settings aligned.</h1>
+              <p class="lede">
+                The settings view centralizes the public medspa metadata, default credit amounts,
+                auto-publish behavior, and owner credentials in one place.
+              </p>
+              <div class="chip-row">
+                <span class="chip">Profile metadata</span>
+                <span class="chip">Reward defaults</span>
+                <span class="chip">Password management</span>
+              </div>
+            </div>
+
+            <div class="medspa-auth-card glass-frame">
+              <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+                <button class="auth-tab" data-auth-mode="login" type="button" role="tab" aria-selected="true">
+                  Log in
+                </button>
+                <button class="auth-tab" data-auth-mode="signup" type="button" role="tab" aria-selected="false">
+                  Sign up
+                </button>
+              </div>
+              <p class="inline-note medspa-auth__note" id="auth-copy">
+                Log in with your existing medspa credentials to update practice settings.
+              </p>
+              <div class="status-banner" id="auth-status" hidden></div>
+
+              <form class="auth-form" id="login-form">
+                <label class="field field--stacked">
+                  <span class="field__label">Email</span>
+                  <input type="email" name="email" autocomplete="email" required />
+                </label>
+                <label class="field field--stacked">
+                  <span class="field__label">Password</span>
+                  <input type="password" name="password" autocomplete="current-password" required />
+                </label>
+                <button class="button-primary" type="submit">Log in to studio</button>
+              </form>
+
+              <form class="auth-form" id="signup-form" hidden>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Your name</span>
+                    <input type="text" name="name" autocomplete="name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Work email</span>
+                    <input type="email" name="email" autocomplete="email" required />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Practice name</span>
+                    <input type="text" name="practice_name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Location</span>
+                    <input type="text" name="practice_location" placeholder="Austin, TX" required />
+                  </label>
+                </div>
+                <label class="field field--stacked">
+                  <span class="field__label">Website</span>
+                  <input type="text" name="practice_website" placeholder="www.yourmedspa.com" />
+                </label>
+                <label class="field field--stacked">
+                  <span class="field__label">Password</span>
+                  <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+                </label>
+                <button class="button-primary" type="submit">Create medspa account</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="medspa-dashboard" id="medspa-dashboard" hidden>
+          <div class="status-banner" id="dashboard-status" hidden></div>
+
+          <section class="dashboard-top glass-frame">
+            <div class="dashboard-top__copy">
+              <span class="eyebrow">Practice settings</span>
+              <h1 class="headline-lg" id="dashboard-practice-name">Loading your studio...</h1>
+              <p class="lede" id="dashboard-practice-copy">
+                Pulling your practice profile and settings from the live backend.
+              </p>
+              <div class="meta-row dashboard-top__meta" id="dashboard-practice-meta"></div>
+              <div class="dashboard-top__actions">
+                <button class="button-primary" id="dashboard-refresh" type="button">Refresh studio</button>
+                <a class="button-secondary" id="dashboard-public-link" href="/gallery/">View public profile</a>
+                <button class="button-secondary" id="dashboard-logout" type="button">Log out</button>
+              </div>
+            </div>
+            <div class="dashboard-highlight" id="dashboard-highlight">
+              <div class="dashboard-highlight__panel">
+                <span class="eyebrow">Connection status</span>
+                <h3>Preparing your account settings</h3>
+                <p class="muted">Practice and account controls will appear here after auth succeeds.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="stats-grid" id="dashboard-stats">
+              <div class="stat-card">
+                <strong>...</strong>
+                <span>Loading stats</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="studio-subnav" aria-label="Medspa studio sections">
+            <a class="studio-subnav__link" href="/medspa/">Overview</a>
+            <a class="studio-subnav__link" href="/medspa/cases/">Cases</a>
+            <a class="studio-subnav__link" href="/medspa/credits/">Credits</a>
+            <a class="studio-subnav__link" href="/medspa/settings/" aria-current="page">Settings</a>
+          </div>
+
+          <section class="dashboard-grid">
+            <article class="surface-card dashboard-panel">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">Practice settings</span>
+                  <h2 class="headline-md">Publishing and rewards defaults</h2>
+                </div>
+                <p>These values drive credit offers and whether cases auto-publish after consent.</p>
+              </div>
+              <form class="dashboard-panel__body" id="practice-settings-form">
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Practice name</span>
+                    <input type="text" name="name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Location</span>
+                    <input type="text" name="location" required />
+                  </label>
+                </div>
+                <label class="field field--stacked">
+                  <span class="field__label">Website</span>
+                  <input type="text" name="website" />
+                </label>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Full consent credit</span>
+                    <input type="number" name="discount_full" min="0" />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Partial consent credit</span>
+                    <input type="number" name="discount_partial" min="0" />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Full blur credit</span>
+                    <input type="number" name="discount_full_blur" min="0" />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Credit expiration days</span>
+                    <input type="number" name="credit_expiration_days" min="30" max="365" />
+                  </label>
+                </div>
+                <label class="checkbox-row">
+                  <input type="checkbox" name="auto_publish" />
+                  <span>Auto-publish cases after complete consent and imagery</span>
+                </label>
+                <button class="button-primary" type="submit">Save practice settings</button>
+              </form>
+            </article>
+
+            <article class="surface-card dashboard-panel">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">Owner account</span>
+                  <h2 class="headline-md">Profile and password</h2>
+                </div>
+                <p>Keep the primary medspa account current and secure.</p>
+              </div>
+              <form class="dashboard-panel__body" id="account-form">
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Display name</span>
+                    <input type="text" name="name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Email</span>
+                    <input type="email" name="email" required />
+                  </label>
+                </div>
+                <button class="button-primary" type="submit">Save profile</button>
+              </form>
+              <form class="dashboard-panel__body" id="password-form">
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Current password</span>
+                    <input type="password" name="current_password" autocomplete="current-password" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">New password</span>
+                    <input type="password" name="new_password" minlength="8" autocomplete="new-password" required />
+                  </label>
+                </div>
+                <button class="button-secondary" type="submit">Update password</button>
+              </form>
+            </article>
+          </section>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Studio</span>
+          </a>
+          <div class="site-footer__meta">
+            <a href="/medspa/">Overview</a>
+            <a href="/medspa/credits/">Credits</a>
+            <span>&copy; 2026 Veriba</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/assets/medspa.js"></script>
+  </body>
+</html>

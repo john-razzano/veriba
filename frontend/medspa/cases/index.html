@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Medspa Cases | Veriba Studio</title>
+    <meta
+      name="description"
+      content="Focused case management for medspas using the Veriba studio workflow."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/medspa.css" />
+  </head>
+  <body data-page="medspa-cases">
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Studio</span>
+          </a>
+          <nav class="site-nav" aria-label="Primary">
+            <a href="/">Public home</a>
+            <a href="/gallery/">Explore gallery</a>
+            <a href="/medspa/" aria-current="page">Medspa studio</a>
+          </nav>
+          <a class="site-header__cta" href="/medspa/">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Studio overview</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <section class="medspa-auth" id="medspa-auth-shell">
+          <div class="medspa-auth__grid">
+            <div class="medspa-auth__copy">
+              <span class="eyebrow">Medspa command center</span>
+              <h1 class="headline-lg">Build the gallery from real case workflow.</h1>
+              <p class="lede">
+                Log in or create a medspa account to manage your Veriba case pipeline. This page is
+                purpose-built for session creation, uploads, consent, and publish control.
+              </p>
+              <div class="chip-row">
+                <span class="chip">FastAPI auth</span>
+                <span class="chip">Direct image uploads</span>
+                <span class="chip">Session publishing</span>
+              </div>
+            </div>
+
+            <div class="medspa-auth-card glass-frame">
+              <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+                <button class="auth-tab" data-auth-mode="login" type="button" role="tab" aria-selected="true">
+                  Log in
+                </button>
+                <button class="auth-tab" data-auth-mode="signup" type="button" role="tab" aria-selected="false">
+                  Sign up
+                </button>
+              </div>
+
+              <p class="inline-note medspa-auth__note" id="auth-copy">
+                Log in with your existing medspa credentials to manage cases and publish results.
+              </p>
+              <div class="status-banner" id="auth-status" hidden></div>
+
+              <form class="auth-form" id="login-form">
+                <label class="field field--stacked">
+                  <span class="field__label">Email</span>
+                  <input type="email" name="email" autocomplete="email" required />
+                </label>
+                <label class="field field--stacked">
+                  <span class="field__label">Password</span>
+                  <input type="password" name="password" autocomplete="current-password" required />
+                </label>
+                <button class="button-primary" type="submit">Log in to studio</button>
+              </form>
+
+              <form class="auth-form" id="signup-form" hidden>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Your name</span>
+                    <input type="text" name="name" autocomplete="name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Work email</span>
+                    <input type="email" name="email" autocomplete="email" required />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Practice name</span>
+                    <input type="text" name="practice_name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Location</span>
+                    <input type="text" name="practice_location" placeholder="Austin, TX" required />
+                  </label>
+                </div>
+                <label class="field field--stacked">
+                  <span class="field__label">Website</span>
+                  <input type="text" name="practice_website" placeholder="www.yourmedspa.com" />
+                </label>
+                <label class="field field--stacked">
+                  <span class="field__label">Password</span>
+                  <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+                </label>
+                <button class="button-primary" type="submit">Create medspa account</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="medspa-dashboard" id="medspa-dashboard" hidden>
+          <div class="status-banner" id="dashboard-status" hidden></div>
+
+          <section class="dashboard-top glass-frame">
+            <div class="dashboard-top__copy">
+              <span class="eyebrow">Case operations</span>
+              <h1 class="headline-lg" id="dashboard-practice-name">Loading your studio...</h1>
+              <p class="lede" id="dashboard-practice-copy">
+                Pulling your practice profile, performance stats, and session pipeline from the live backend.
+              </p>
+              <div class="meta-row dashboard-top__meta" id="dashboard-practice-meta"></div>
+              <div class="dashboard-top__actions">
+                <button class="button-primary" id="dashboard-refresh" type="button">Refresh studio</button>
+                <a class="button-secondary" id="dashboard-public-link" href="/gallery/">View public profile</a>
+                <button class="button-secondary" id="dashboard-logout" type="button">Log out</button>
+              </div>
+            </div>
+            <div class="dashboard-highlight" id="dashboard-highlight">
+              <div class="dashboard-highlight__panel">
+                <span class="eyebrow">Connection status</span>
+                <h3>Preparing your practice data</h3>
+                <p class="muted">Your case pipeline will render here after auth succeeds.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="stats-grid" id="dashboard-stats">
+              <div class="stat-card">
+                <strong>...</strong>
+                <span>Loading stats</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="studio-subnav" aria-label="Medspa studio sections">
+            <a class="studio-subnav__link" href="/medspa/">Overview</a>
+            <a class="studio-subnav__link" href="/medspa/cases/" aria-current="page">Cases</a>
+            <a class="studio-subnav__link" href="/medspa/credits/">Credits</a>
+            <a class="studio-subnav__link" href="/medspa/settings/">Settings</a>
+          </div>
+
+          <section class="dashboard-grid">
+            <article class="surface-card dashboard-panel" id="create-case">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">New case</span>
+                  <h2 class="headline-md">Start a transformation workflow</h2>
+                </div>
+                <p>Create the record here, then upload before and after imagery when it is ready.</p>
+              </div>
+              <form class="dashboard-panel__body" id="create-session-form">
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Patient initials</span>
+                    <input type="text" name="patient_initials" maxlength="10" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Treatment</span>
+                    <input type="text" name="treatment" required />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Category</span>
+                    <select name="category">
+                      <option value="Botox">Botox</option>
+                      <option value="Fillers">Fillers</option>
+                      <option value="Skin">Skin</option>
+                      <option value="Hair">Hair</option>
+                      <option value="Body">Body</option>
+                      <option value="Other" selected>Other</option>
+                    </select>
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Starting status</span>
+                    <select name="status">
+                      <option value="draft" selected>Draft</option>
+                      <option value="pending_after">Pending after photo</option>
+                    </select>
+                  </label>
+                </div>
+                <button class="button-primary" type="submit">Create case</button>
+              </form>
+            </article>
+
+            <article class="surface-card dashboard-panel">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">Workflow notes</span>
+                  <h2 class="headline-md">What pushes a case live</h2>
+                </div>
+                <p>A public case needs both images plus a consent tier that is not declined.</p>
+              </div>
+              <div class="dashboard-panel__body">
+                <div class="metric-stack">
+                  <div class="metric-stack__line">
+                    <strong>Before image</strong>
+                    <span>Starts the chain-of-custody timeline</span>
+                  </div>
+                  <div class="metric-stack__line">
+                    <strong>After image</strong>
+                    <span>Moves the case into pending consent</span>
+                  </div>
+                  <div class="metric-stack__line">
+                    <strong>Consent</strong>
+                    <span>Unlocks publish or ready-to-publish state</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="section">
+            <div class="toolbar dashboard-toolbar">
+              <div class="section-head__copy">
+                <span class="eyebrow">Case pipeline</span>
+                <h2 class="headline-md">Manage uploads, consent, and publishing</h2>
+                <p id="session-list-summary">
+                  Cases created here feed the same backend that powers the public gallery.
+                </p>
+              </div>
+              <form class="dashboard-filters" id="session-filter-form">
+                <label class="field field--icon">
+                  <span class="field__icon material-symbols-outlined">search</span>
+                  <input
+                    id="session-filter-query"
+                    type="search"
+                    name="query"
+                    placeholder="Search by patient initials or treatment"
+                  />
+                </label>
+                <label class="field">
+                  <select id="session-filter-status" name="status">
+                    <option value="">All statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="pending_after">Pending after</option>
+                    <option value="pending_consent">Pending consent</option>
+                    <option value="ready_to_publish">Ready to publish</option>
+                    <option value="published">Published</option>
+                    <option value="declined">Declined</option>
+                    <option value="unpublished">Unpublished</option>
+                  </select>
+                </label>
+                <button class="button-secondary" type="submit">Apply filters</button>
+              </form>
+            </div>
+
+            <div class="admin-cases-grid" id="session-list"></div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Studio</span>
+          </a>
+          <div class="site-footer__meta">
+            <a href="/medspa/">Overview</a>
+            <a href="/medspa/settings/">Settings</a>
+            <span>&copy; 2026 Veriba</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/assets/medspa.js"></script>
+  </body>
+</html>
