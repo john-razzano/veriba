@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Share Your Results — Veriba</title>
+    <meta name="description" content="Upload your after photo and claim your reward." />
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/medspa.css" />
+    <style>
+      .upload-shell {
+        max-width: 38rem;
+        margin: 0 auto;
+        padding: 2rem 0 5rem;
+      }
+
+      .upload-card {
+        padding: 1.6rem;
+        border-radius: var(--radius-lg);
+        background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(246,243,242,0.92));
+        box-shadow: var(--shadow-soft);
+      }
+
+      .upload-card + .upload-card {
+        margin-top: 1.2rem;
+      }
+
+      .upload-card__head {
+        margin-bottom: 1.2rem;
+      }
+
+      .upload-card__head h2 {
+        margin: 0.4rem 0 0.5rem;
+        font-size: 1.4rem;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      .upload-card__head p {
+        margin: 0;
+        color: rgba(27,28,27,0.62);
+        line-height: 1.7;
+      }
+
+      .before-preview {
+        border-radius: calc(var(--radius-lg) - 8px);
+        overflow: hidden;
+        min-height: 14rem;
+        background: linear-gradient(135deg, rgba(117,87,80,0.08), rgba(214,176,167,0.22));
+        margin-bottom: 1.2rem;
+      }
+
+      .before-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .drop-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        min-height: 11rem;
+        border-radius: calc(var(--radius-lg) - 8px);
+        border: 2px dashed rgba(117,87,80,0.18);
+        background: var(--surface-low);
+        cursor: pointer;
+        transition: background var(--transition), border-color var(--transition);
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .drop-zone:hover,
+      .drop-zone.dragover {
+        background: rgba(214,176,167,0.12);
+        border-color: var(--primary-soft);
+      }
+
+      .drop-zone .material-symbols-outlined {
+        font-size: 2.2rem;
+        color: var(--primary-soft-deep);
+      }
+
+      .drop-zone p {
+        margin: 0;
+        color: rgba(27,28,27,0.56);
+        font-size: 0.92rem;
+        line-height: 1.6;
+      }
+
+      .drop-zone strong {
+        color: var(--primary);
+      }
+
+      .drop-zone input[type="file"] {
+        display: none;
+      }
+
+      .photo-preview-wrap {
+        position: relative;
+        border-radius: calc(var(--radius-lg) - 8px);
+        overflow: hidden;
+        min-height: 14rem;
+        background: var(--surface-high);
+      }
+
+      .photo-preview-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        max-height: 26rem;
+      }
+
+      .photo-preview-wrap .replace-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.82rem;
+      }
+
+      .consent-option {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: var(--radius-md);
+        background: var(--surface-low);
+        cursor: pointer;
+        transition: background var(--transition), box-shadow var(--transition);
+        border: 2px solid transparent;
+      }
+
+      .consent-option:has(input:checked) {
+        background: rgba(214,176,167,0.14);
+        border-color: rgba(117,87,80,0.2);
+      }
+
+      .consent-option input[type="radio"] {
+        width: 1.1rem;
+        height: 1.1rem;
+        accent-color: var(--primary);
+        flex-shrink: 0;
+      }
+
+      .consent-option__body {
+        flex: 1;
+      }
+
+      .consent-option__label {
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+
+      .consent-option__reward {
+        margin-top: 0.2rem;
+        font-size: 0.85rem;
+        color: rgba(27,28,27,0.58);
+      }
+
+      .consent-options {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .reward-banner {
+        padding: 1.1rem 1.3rem;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, rgba(214,176,167,0.5), rgba(244,226,221,0.6));
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .reward-banner .material-symbols-outlined {
+        font-size: 1.6rem;
+        color: var(--primary);
+        flex-shrink: 0;
+      }
+
+      .reward-banner p {
+        margin: 0;
+        line-height: 1.6;
+        font-size: 0.94rem;
+      }
+
+      .reward-banner strong {
+        display: block;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      .step-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.6rem;
+      }
+
+      .step-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: var(--surface-highest);
+        transition: background var(--transition);
+      }
+
+      .step-dot.active {
+        background: var(--primary-soft-deep);
+      }
+
+      .step-dot.done {
+        background: #4caf87;
+      }
+
+      .success-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(214,176,167,0.5), rgba(244,226,221,0.6));
+        margin: 0 auto 1.2rem;
+      }
+
+      .success-icon .material-symbols-outlined {
+        font-size: 2rem;
+        color: var(--primary);
+      }
+
+      .upload-shell .site-main {
+        padding: 0;
+      }
+
+      #step-upload,
+      #step-consent,
+      #step-done {
+        display: none;
+      }
+
+      #step-upload.active,
+      #step-consent.active,
+      #step-done.active {
+        display: block;
+      }
+
+      #step-loading {
+        text-align: center;
+        padding: 4rem 0;
+        color: rgba(27,28,27,0.5);
+      }
+
+      #step-invalid {
+        display: none;
+        text-align: center;
+        padding: 4rem 1rem;
+      }
+
+      #step-invalid.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <div class="upload-shell">
+
+          <div id="step-loading">
+            <span class="material-symbols-outlined" style="font-size:2rem;display:block;margin-bottom:0.75rem;color:var(--primary-soft-deep)">hourglass_top</span>
+            <p class="loading">Verifying your link…</p>
+          </div>
+
+          <div id="step-invalid">
+            <div class="upload-card" style="text-align:center;padding:2.5rem 1.5rem;">
+              <span class="material-symbols-outlined" style="font-size:2.5rem;color:var(--primary-soft-deep);margin-bottom:1rem;display:block">link_off</span>
+              <h2 class="headline-md" style="margin-bottom:0.75rem;">This link has expired</h2>
+              <p class="lede" style="margin:0 auto;">Please contact your provider to request a new upload link.</p>
+            </div>
+          </div>
+
+          <div id="step-upload">
+            <div class="step-indicator">
+              <div class="step-dot active" id="dot-1"></div>
+              <div class="step-dot" id="dot-2"></div>
+              <div class="step-dot" id="dot-3"></div>
+            </div>
+
+            <div class="upload-card">
+              <div class="upload-card__head">
+                <span class="eyebrow">Step 1 of 2</span>
+                <h2 id="upload-heading">Upload your after photo</h2>
+                <p id="upload-subhead">Share your results with your provider to earn your reward.</p>
+              </div>
+
+              <div id="before-preview-wrap" class="before-preview" style="display:none;">
+                <img id="before-img" src="" alt="Your before photo" />
+              </div>
+
+              <div id="status-upload" class="status-banner" style="display:none;"></div>
+
+              <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Choose a photo to upload">
+                <span class="material-symbols-outlined">add_photo_alternate</span>
+                <p><strong>Tap to choose your photo</strong><br>or drag and drop here<br><span style="font-size:0.82rem;">JPEG, PNG, HEIC — up to 10MB</span></p>
+                <input id="file-input" type="file" accept="image/*" />
+              </div>
+
+              <div id="photo-preview-wrap" class="photo-preview-wrap" style="display:none;">
+                <img id="photo-preview" src="" alt="Your selected photo" />
+                <button class="button-secondary replace-btn" id="replace-btn" type="button">Change photo</button>
+              </div>
+
+              <div style="margin-top:1rem;">
+                <button class="button-primary" id="upload-btn" type="button" style="width:100%;" disabled>
+                  Upload photo
+                </button>
+              </div>
+            </div>
+
+            <div class="upload-card" id="reward-preview-upload" style="display:none;">
+              <div class="reward-banner">
+                <span class="material-symbols-outlined">redeem</span>
+                <p><strong id="reward-label-upload"></strong>Choose your sharing preference on the next step to claim it.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="step-consent">
+            <div class="step-indicator">
+              <div class="step-dot done"></div>
+              <div class="step-dot active" id="dot-2b"></div>
+              <div class="step-dot" id="dot-3b"></div>
+            </div>
+
+            <div class="upload-card">
+              <div class="upload-card__head">
+                <span class="eyebrow">Step 2 of 2</span>
+                <h2>Choose how your photos are shared</h2>
+                <p>Select your sharing preference. You can earn a reward by allowing your results to be published — your face can be obscured if you prefer.</p>
+              </div>
+
+              <div id="status-consent" class="status-banner" style="display:none;"></div>
+
+              <div class="consent-options" id="consent-options"></div>
+
+              <div style="margin-top:1.2rem;">
+                <button class="button-primary" id="consent-btn" type="button" style="width:100%;" disabled>
+                  Confirm my choice
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="step-done">
+            <div class="upload-card" style="text-align:center;padding:2.5rem 1.5rem;">
+              <div class="success-icon">
+                <span class="material-symbols-outlined">check</span>
+              </div>
+              <h2 class="headline-md" style="margin-bottom:0.75rem;" id="done-heading">Thank you!</h2>
+              <p class="lede" style="margin:0 auto;" id="done-message"></p>
+              <div id="reward-result" style="margin-top:1.6rem;display:none;">
+                <div class="reward-banner" style="text-align:left;">
+                  <span class="material-symbols-outlined">redeem</span>
+                  <p>
+                    <strong id="reward-code-label"></strong>
+                    <span id="reward-code-detail" style="color:rgba(27,28,27,0.6);font-size:0.88rem;"></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba</span>
+          </a>
+          <div class="site-footer__meta">
+            <span>Your results, your choice.</span>
+            <span>&copy; 2026 Veriba</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const API = "";
+      const token = location.pathname.replace(/^\/upload\/?/, "").replace(/\/$/, "");
+
+      const $ = id => document.getElementById(id);
+
+      let context = null;
+      let selectedFile = null;
+      let selectedTier = null;
+
+      function showStatus(el, message, type = "error") {
+        el.textContent = message;
+        el.className = `status-banner status-banner--${type}`;
+        el.style.display = "block";
+      }
+
+      function hideStatus(el) {
+        el.style.display = "none";
+      }
+
+      function setStep(name) {
+        ["loading", "invalid", "upload", "consent", "done"].forEach(s => {
+          const el = $(`step-${s}`);
+          if (el) el.classList.remove("active");
+        });
+        const target = $(`step-${name}`);
+        if (target) target.classList.add("active");
+      }
+
+      async function apiRequest(path, options = {}) {
+        const res = await fetch(API + path, {
+          headers: { "Accept": "application/json", ...(options.headers || {}) },
+          ...options,
+        });
+        const ct = res.headers.get("content-type") || "";
+        const payload = ct.includes("application/json") ? await res.json() : null;
+        if (!res.ok || !payload?.success) {
+          throw new Error(payload?.error?.message || `Request failed (${res.status})`);
+        }
+        return payload.data;
+      }
+
+      async function init() {
+        if (!token) {
+          setStep("invalid");
+          return;
+        }
+        try {
+          const data = await apiRequest(`/api/patient/upload/${encodeURIComponent(token)}`);
+          if (!data.valid) {
+            setStep("invalid");
+            return;
+          }
+          context = data;
+          renderUploadStep();
+          setStep("upload");
+        } catch {
+          setStep("invalid");
+        }
+      }
+
+      function renderUploadStep() {
+        $("upload-heading").textContent = `Upload your after photo, ${context.patient_first_name || ""}`.trim().replace(/,$/, "");
+        $("upload-subhead").textContent = `Your provider ${context.practice_name} is waiting on your results from your ${context.treatment} treatment.`;
+
+        if (context.before_image_url) {
+          $("before-img").src = context.before_image_url;
+          $("before-preview-wrap").style.display = "block";
+        }
+
+        if (context.reward_amount) {
+          $("reward-label-upload").textContent = `Earn up to $${context.reward_amount} off your next visit. `;
+          $("reward-preview-upload").style.display = "block";
+        }
+      }
+
+      function renderConsentStep() {
+        const container = $("consent-options");
+        container.innerHTML = "";
+        (context.consent_options || []).forEach(opt => {
+          const label = document.createElement("label");
+          label.className = "consent-option";
+          label.innerHTML = `
+            <input type="radio" name="consent_tier" value="${opt.tier}" />
+            <div class="consent-option__body">
+              <div class="consent-option__label">${opt.label}</div>
+              <div class="consent-option__reward">${opt.reward}</div>
+            </div>
+          `;
+          container.appendChild(label);
+        });
+        container.querySelectorAll("input[type=radio]").forEach(radio => {
+          radio.addEventListener("change", () => {
+            selectedTier = radio.value;
+            $("consent-btn").disabled = false;
+          });
+        });
+      }
+
+      // Drop zone / file selection
+      const dropZone = $("drop-zone");
+      const fileInput = $("file-input");
+
+      dropZone.addEventListener("click", () => fileInput.click());
+      dropZone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+
+      dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+      dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelected(file);
+      });
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files[0]) handleFileSelected(fileInput.files[0]);
+      });
+
+      $("replace-btn").addEventListener("click", () => {
+        selectedFile = null;
+        $("drop-zone").style.display = "flex";
+        $("photo-preview-wrap").style.display = "none";
+        $("upload-btn").disabled = true;
+        fileInput.value = "";
+      });
+
+      function handleFileSelected(file) {
+        if (!file.type.startsWith("image/") && !file.name.toLowerCase().match(/\.(heic|heif)$/)) {
+          showStatus($("status-upload"), "Please choose an image file.");
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showStatus($("status-upload"), "Image must be under 10MB.");
+          return;
+        }
+        hideStatus($("status-upload"));
+        selectedFile = file;
+        const reader = new FileReader();
+        reader.onload = e => {
+          $("photo-preview").src = e.target.result;
+          $("drop-zone").style.display = "none";
+          $("photo-preview-wrap").style.display = "block";
+        };
+        reader.readAsDataURL(file);
+        $("upload-btn").disabled = false;
+      }
+
+      $("upload-btn").addEventListener("click", async () => {
+        if (!selectedFile) return;
+        const btn = $("upload-btn");
+        btn.disabled = true;
+        btn.textContent = "Uploading…";
+        hideStatus($("status-upload"));
+        try {
+          const form = new FormData();
+          form.append("file", selectedFile);
+          await apiRequest(`/api/patient/upload/${encodeURIComponent(token)}/photo`, {
+            method: "POST",
+            body: form,
+          });
+          renderConsentStep();
+          setStep("consent");
+        } catch (err) {
+          showStatus($("status-upload"), err.message);
+          btn.disabled = false;
+          btn.textContent = "Upload photo";
+        }
+      });
+
+      $("consent-btn").addEventListener("click", async () => {
+        if (!selectedTier) return;
+        const btn = $("consent-btn");
+        btn.disabled = true;
+        btn.textContent = "Saving…";
+        hideStatus($("status-consent"));
+        try {
+          const data = await apiRequest(`/api/patient/upload/${encodeURIComponent(token)}/consent`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ consent_tier: selectedTier, consent_form_version: "v1.0" }),
+          });
+          $("done-message").textContent = data.message || "Your preference has been saved.";
+          if (data.reward_earned) {
+            $("reward-code-label").textContent = `Your reward code: ${data.reward_earned.code}`;
+            $("reward-code-detail").textContent = `$${data.reward_earned.amount} off — show this at your next visit.`;
+            $("reward-result").style.display = "block";
+          }
+          setStep("done");
+        } catch (err) {
+          showStatus($("status-consent"), err.message);
+          btn.disabled = false;
+          btn.textContent = "Confirm my choice";
+        }
+      });
+
+      init();
+    </script>
+  </body>
+</html>

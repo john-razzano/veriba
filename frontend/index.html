@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Veriba Gallery</title>
+    <meta
+      name="description"
+      content="An editorial public gallery of verified aesthetic transformations."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body data-page="home">
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Gallery</span>
+          </a>
+          <nav class="site-nav" aria-label="Primary">
+            <a data-nav-link href="/">Home</a>
+            <a data-nav-link href="/gallery/">Explore</a>
+            <a href="/medspa/">For Medspas</a>
+            <a href="#providers">Providers</a>
+            <a href="#trust">Why Veriba</a>
+          </nav>
+          <a class="site-header__cta" href="/gallery/">
+            <span class="material-symbols-outlined">north_east</span>
+            <span>Browse transformations</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <section class="hero">
+          <div class="hero__copy">
+            <span class="eyebrow">Public transformation gallery</span>
+            <h1 class="headline-xl">The art of precision, published with context.</h1>
+            <p class="lede">
+              Veriba presents aesthetic outcomes with an editorial eye: refined before-and-after
+              stories, provider context, and a chain of custody that makes trust part of the
+              experience instead of an afterthought.
+            </p>
+            <div class="hero__actions">
+              <form class="search-shell" data-gallery-search>
+                <div class="search-form">
+                  <label class="field field--icon">
+                    <span class="field__icon material-symbols-outlined">search</span>
+                    <input
+                      type="search"
+                      name="q"
+                      placeholder="Search treatments, providers, or locations"
+                    />
+                  </label>
+                  <button class="button-primary" type="submit">Open gallery</button>
+                </div>
+              </form>
+              <a class="button-secondary" href="/medspa/">
+                <span class="material-symbols-outlined">login</span>
+                <span>Medspa login / sign up</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="hero-visual glass-frame">
+            <div class="hero-visual__panel">
+              <div class="hero-visual__content" id="home-hero-summary">
+                <span class="eyebrow">Curated now</span>
+                <h2 class="headline-md">A rotating spotlight from the live public gallery</h2>
+                <p class="hero-visual__caption">
+                  Published cases surface here dynamically so the landing experience always feels
+                  current and alive.
+                </p>
+              </div>
+              <div class="hero-visual__image" id="home-hero-image"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div class="section-head__copy">
+              <span class="eyebrow">Trending transformations</span>
+              <h2 class="headline-md">A gallery wall of recent published results</h2>
+              <p>
+                Each case links to an editorial detail page that keeps the visual experience soft
+                and elevated while still exposing publication and verification context.
+              </p>
+            </div>
+          </div>
+          <div class="cases-grid" id="featured-sessions"></div>
+        </section>
+
+        <section class="section" id="providers">
+          <div class="section-head">
+            <div class="section-head__copy">
+              <span class="eyebrow">The masters of form</span>
+              <h2 class="headline-md">Provider spotlights drawn from published work</h2>
+              <p>
+                Clinics with public cases become discoverable profiles, each with a focused page
+                and a collection of published transformations.
+              </p>
+            </div>
+          </div>
+          <div class="providers-grid" id="featured-practices"></div>
+        </section>
+
+        <section class="section" id="trust">
+          <div class="trust-panel">
+            <div class="editorial-image">
+              <img
+                src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80"
+                alt="Clinician reviewing treatment notes"
+                loading="lazy"
+              />
+            </div>
+            <div class="trust-panel__list">
+              <span class="eyebrow">Integrity behind every pixel</span>
+              <h2 class="headline-md">Why this gallery feels different</h2>
+              <div class="trust-item">
+                <h4>Published from live medspa workflows</h4>
+                <p>
+                  Results are pulled from the operational Veriba pipeline instead of being staged
+                  as detached marketing assets.
+                </p>
+              </div>
+              <div class="trust-item">
+                <h4>Editorial detail without template fatigue</h4>
+                <p>
+                  Tonal layering, asymmetry, and warm minimalism replace rigid grids and generic
+                  directory patterns.
+                </p>
+              </div>
+              <div class="trust-item">
+                <h4>Trust surfaced, not buried</h4>
+                <p>
+                  Every case detail page can show verification checkpoints, provider context, and
+                  publication timing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="cta-band">
+            <div class="cta-band__grid">
+              <div>
+                <span class="eyebrow">Ready to explore deeper</span>
+                <h2 class="headline-md">Search by treatment, provider, or city.</h2>
+                <p>
+                  The gallery search experience is designed to feel like browsing a premium
+                  editorial archive rather than a stock directory.
+                </p>
+              </div>
+              <form data-gallery-search>
+                <div class="search-form">
+                  <label class="field field--icon">
+                    <span class="field__icon material-symbols-outlined">search</span>
+                    <input type="search" name="q" placeholder="Botox, filler, skin..." />
+                  </label>
+                  <button class="button-primary" type="submit">Search live gallery</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark material-symbols-outlined">auto_awesome</span>
+            <span>Veriba Gallery</span>
+          </a>
+          <div class="site-footer__meta">
+            <span>Editorial public transformations for modern medspas.</span>
+            <a href="/gallery/">Explore</a>
+            <a href="/medspa/">Medspa studio</a>
+            <span>&copy; 2026 Veriba</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/assets/site.js"></script>
+  </body>
+</html>

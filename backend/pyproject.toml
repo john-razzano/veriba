@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veriba-backend"
+version = "0.1.0"
+description = "FastAPI backend for Veriba"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14.0",
+  "celery[redis]>=5.4.0",
+  "cairosvg>=2.7.1",
+  "email-validator>=2.2.0",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.1",
+  "minio>=7.2.15",
+  "passlib[bcrypt]>=1.7.4",
+  "pillow>=11.1.0",
+  "pillow-heif>=0.18.0",
+  "psycopg[binary]>=3.2.6",
+  "pydantic-settings>=2.7.1",
+  "pyjwt>=2.10.1",
+  "python-multipart>=0.0.20",
+  "redis>=5.2.1",
+  "slowapi>=0.1.9",
+  "sqlalchemy>=2.0.39",
+  "uvicorn[standard]>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.5",
+  "pytest-asyncio>=0.25.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+

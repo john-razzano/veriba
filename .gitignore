@@ -1,0 +1,15 @@
+.env
+.codex
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+.mypy_cache/
+.ruff_cache/
+.venv/
+backend/.coverage
+backend/htmlcov/
+backend/celerybeat-schedule
+backend/storage/*
+!backend/storage/.gitkeep

@@ -1,0 +1,90 @@
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - fastapi
+      - minio
+
+  fastapi:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file: .env
+    environment:
+      SEED_INTERNAL_ADMIN_ON_STARTUP: "true"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - minio
+      - redis
+    ports:
+      - "8000:8000"
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.tasks.worker.celery_app worker --loglevel=info
+    env_file: .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - minio
+      - redis
+
+  celery-beat:
+    build: ./backend
+    command: celery -A app.tasks.worker.celery_app beat --loglevel=info
+    env_file: .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+
+  postgres:
+    image: postgres:16
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    env_file: .env
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  cloudflared:
+    image: cloudflare/cloudflared
+    command: tunnel --no-autoupdate --url http://caddy:80
+    env_file: .env
+    depends_on:
+      - caddy
+    profiles:
+      - edge
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Veriba Internal Admin</title>
+    <meta
+      name="description"
+      content="Internal operations portal for Veriba employees to manage onboarded medspas."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/medspa.css" />
+    <link rel="stylesheet" href="/assets/internal-admin.css" />
+  </head>
+  <body data-page="internal-admin">
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="site-header__inner">
+          <span class="brand">
+            <span class="brand__mark material-symbols-outlined">shield_lock</span>
+            <span>Veriba Internal</span>
+          </span>
+          <div class="internal-header__meta">
+            <span class="meta-pill">Hidden admin route</span>
+            <span class="meta-pill">No public nav exposure</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <section class="medspa-auth" id="internal-auth-shell">
+          <div class="medspa-auth__grid">
+            <div class="medspa-auth__copy">
+              <span class="eyebrow">Internal operations</span>
+              <h1 class="headline-lg">Administer onboarded medspas from one hidden control room.</h1>
+              <p class="lede">
+                This route is intentionally unlinked from the public site. Internal Veriba users can
+                log in here to onboard medspas, inspect practice health, and update medspa-facing
+                settings across the platform.
+              </p>
+              <div class="chip-row">
+                <span class="chip">Cross-practice access</span>
+                <span class="chip">Medspa onboarding</span>
+                <span class="chip">Operational oversight</span>
+              </div>
+            </div>
+
+            <div class="medspa-auth-card glass-frame">
+              <span class="eyebrow">Internal sign in</span>
+              <h2 class="headline-md internal-auth__title">Restricted Veriba access</h2>
+              <p class="inline-note internal-auth__note">
+                Use a provisioned internal admin account. This portal does not support public signup.
+              </p>
+              <div class="status-banner" id="internal-auth-status" hidden></div>
+
+              <form class="auth-form" id="internal-login-form">
+                <label class="field field--stacked">
+                  <span class="field__label">Work email</span>
+                  <input type="email" name="email" autocomplete="email" required />
+                </label>
+                <label class="field field--stacked">
+                  <span class="field__label">Password</span>
+                  <input type="password" name="password" autocomplete="current-password" required />
+                </label>
+                <button class="button-primary" type="submit">Enter internal portal</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="medspa-dashboard" id="internal-dashboard" hidden>
+          <div class="status-banner" id="internal-dashboard-status" hidden></div>
+
+          <section class="dashboard-top glass-frame">
+            <div class="dashboard-top__copy">
+              <span class="eyebrow">Portfolio oversight</span>
+              <h1 class="headline-lg" id="internal-dashboard-title">Loading internal portfolio...</h1>
+              <p class="lede" id="internal-dashboard-copy">
+                Pulling overview metrics and medspa portfolio data from the protected internal API.
+              </p>
+              <div class="meta-row dashboard-top__meta" id="internal-dashboard-meta"></div>
+              <div class="dashboard-top__actions">
+                <button class="button-primary" id="internal-refresh" type="button">Refresh portal</button>
+                <button class="button-secondary" id="internal-logout" type="button">Log out</button>
+              </div>
+            </div>
+            <div class="dashboard-highlight" id="internal-highlight">
+              <div class="dashboard-highlight__panel">
+                <span class="eyebrow">Internal routing</span>
+                <h3>Hidden from the public site</h3>
+                <p class="muted">
+                  This portal is available only via direct URL and protected internal credentials.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="stats-grid" id="internal-stats">
+              <div class="stat-card">
+                <strong>...</strong>
+                <span>Loading overview</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="surface-card dashboard-panel">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">Onboard medspa</span>
+                  <h2 class="headline-md">Create a new partner account</h2>
+                </div>
+                <p>Provision the owner login and practice record in one action.</p>
+              </div>
+              <form class="dashboard-panel__body" id="internal-create-practice-form">
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Practice name</span>
+                    <input type="text" name="practice_name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Location</span>
+                    <input type="text" name="practice_location" required />
+                  </label>
+                </div>
+                <label class="field field--stacked">
+                  <span class="field__label">Website</span>
+                  <input type="text" name="practice_website" placeholder="www.medspa.com" />
+                </label>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Owner name</span>
+                    <input type="text" name="owner_name" required />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Owner email</span>
+                    <input type="email" name="owner_email" required />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Temporary password</span>
+                    <input type="text" name="owner_password" minlength="8" required />
+                  </label>
+                  <label class="checkbox-row">
+                    <input type="checkbox" name="auto_publish" />
+                    <span>Enable auto-publish</span>
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Full consent credit</span>
+                    <input type="number" name="discount_full" min="0" placeholder="150" />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Partial consent credit</span>
+                    <input type="number" name="discount_partial" min="0" placeholder="75" />
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--stacked">
+                    <span class="field__label">Full blur credit</span>
+                    <input type="number" name="discount_full_blur" min="0" placeholder="25" />
+                  </label>
+                  <label class="field field--stacked">
+                    <span class="field__label">Credit expiration days</span>
+                    <input type="number" name="credit_expiration_days" min="30" max="365" placeholder="180" />
+                  </label>
+                </div>
+                <button class="button-primary" type="submit">Create medspa</button>
+              </form>
+            </article>
+
+            <article class="surface-card dashboard-panel">
+              <div class="dashboard-panel__head">
+                <div>
+                  <span class="eyebrow">Portfolio notes</span>
+                  <h2 class="headline-md">How this portal is scoped</h2>
+                </div>
+                <p>Focused on onboarding and operational oversight across all partner medspas.</p>
+              </div>
+              <div class="dashboard-panel__body">
+                <div class="metric-stack">
+                  <div class="metric-stack__line">
+                    <strong>Portfolio metrics</strong>
+                    <span>Counts of medspas, users, published sessions, and reward value</span>
+                  </div>
+                  <div class="metric-stack__line">
+                    <strong>Practice controls</strong>
+                    <span>Update medspa profile settings and owner contact details from one place</span>
+                  </div>
+                  <div class="metric-stack__line">
+                    <strong>Recent operational data</strong>
+                    <span>Inspect sessions and credits without logging into each medspa account</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="section">
+            <div class="toolbar dashboard-toolbar">
+              <div class="section-head__copy">
+                <span class="eyebrow">Medspa directory</span>
+                <h2 class="headline-md">Search and manage all onboarded partners</h2>
+                <p id="internal-practice-summary">
+                  Loading medspa directory from the internal API.
+                </p>
+              </div>
+              <form class="dashboard-filters" id="internal-search-form">
+                <label class="field field--icon">
+                  <span class="field__icon material-symbols-outlined">search</span>
+                  <input
+                    id="internal-search-query"
+                    type="search"
+                    name="query"
+                    placeholder="Search by practice, slug, or city"
+                  />
+                </label>
+                <button class="button-secondary" type="submit">Search portfolio</button>
+              </form>
+            </div>
+            <div class="internal-practice-directory" id="internal-practice-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/assets/internal-admin.js"></script>
+  </body>
+</html>
