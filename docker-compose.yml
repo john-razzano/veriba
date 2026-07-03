@@ -71,7 +71,7 @@ services:
       - minio_data:/data
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "9091:9001"
 
   cloudflared:
     image: cloudflare/cloudflared
