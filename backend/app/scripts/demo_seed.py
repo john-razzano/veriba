@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 from io import BytesIO
+from pathlib import Path
 import random
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -34,7 +35,9 @@ DEMO_EMAIL_SUFFIXES = {
     "aster-demo": "aster",
     "meridian-demo": "meridian",
     "solstice-demo": "solstice",
+    "veriba-atelier": "atelier",
 }
+SEED_ASSETS_DIR = Path(__file__).resolve().parent / "seed_assets"
 SMOKE_EMAIL_PREFIXES = ("gallery-test-", "frontend-test-", "medspa-test-")
 DEMO_NAME_SUFFIX = " Demo"
 DEMO_TAG = "VERIBA DEMO"
@@ -70,6 +73,10 @@ class DemoSessionSpec:
     page_views: int
     tagline: str
     credit: DemoCreditSpec | None = None
+    # Real photography (filenames under seed_assets/). When set, these are
+    # loaded instead of generating illustrative placeholder art.
+    before_asset: str | None = None
+    after_asset: str | None = None
 
 
 @dataclass(frozen=True)
@@ -257,6 +264,131 @@ DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
                 tagline="Prepared for next upload",
                 credit=None,
             ),
+        ),
+    ),
+    DemoPracticeSpec(
+        name="Veriba Atelier",
+        slug="veriba-atelier",
+        location="Newport Beach, CA",
+        website="https://atelier.veriba.studio",
+        owner_name="Elena Marsh",
+        owner_email="owner+atelier@veriba-demo.studio",
+        theme=DemoTheme(
+            top=(240, 235, 228),
+            bottom=(201, 187, 168),
+            glow=(232, 214, 197),
+            silhouette=(181, 103, 45),
+            accent=(45, 79, 94),
+        ),
+        sessions=(
+            DemoSessionSpec(
+                patient_initials="KZ", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Structured lip filler with balanced upper-to-lower ratio, photographed in controlled studio light.",
+                page_views=241, tagline="Balanced volume, natural finish",
+                before_asset="kenz-lip-filler_before.jpg", after_asset="kenz-lip-filler_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="KM", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Full-face refresh anchored by subtle lip augmentation and perioral support.",
+                page_views=187, tagline="Soft augmentation, full-face harmony",
+                before_asset="kenz-lip-filler-4_before.jpg", after_asset="kenz-lip-filler-4_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LU", treatment="Under-Eye Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Tear-trough correction reducing under-eye hollowing and shadow.",
+                page_views=163, tagline="Brighter, rested under-eyes",
+                before_asset="lush-under-eye_before.jpg", after_asset="lush-under-eye_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LL", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Definition-first lip filler with emphasis on the cupid's bow and vermilion border.",
+                page_views=154, tagline="Defined borders, fuller profile",
+                before_asset="lush-lip-filler_before.jpg", after_asset="lush-lip-filler_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LM", treatment="Microneedling", category=SessionCategory.skin.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Collagen-induction series improving texture, tone, and overall skin quality.",
+                page_views=142, tagline="Refined texture after three sessions",
+                before_asset="lush-microneedling_before.jpg", after_asset="lush-microneedling_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LT", treatment="PDO Threads", category=SessionCategory.other.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="PDO thread lift restoring mid-face support with visible lip and cheek lift.",
+                page_views=133, tagline="Lifted contours without surgery",
+                before_asset="lush-pdo-threads_before.jpg", after_asset="lush-pdo-threads_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LR", treatment="Liquid Rhinoplasty", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Non-surgical rhinoplasty smoothing the dorsal profile with structured filler.",
+                page_views=228, tagline="Straightened profile in one visit",
+                before_asset="lush-rhinoplasty-1_before.jpg", after_asset="lush-rhinoplasty-1_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="LS", treatment="Liquid Rhinoplasty", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Bridge and tip refinement via non-surgical filler rhinoplasty.",
+                page_views=119, tagline="Refined tip, smoother bridge",
+                before_asset="lush-rhinoplasty-3_before.jpg", after_asset="lush-rhinoplasty-3_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="AV", treatment="Under-Eye Rejuvenation", category=SessionCategory.skin.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Under-eye rejuvenation softening fine lines and puffiness around the orbital area.",
+                page_views=98, tagline="Smoother, firmer eye area",
+                before_asset="stock-under-eye_before.jpg", after_asset="stock-under-eye_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="AR", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Conservative lip enhancement preserving natural shape while adding central volume.",
+                page_views=176, tagline="Natural shape, added volume",
+                before_asset="stock-lip-filler_before.jpg", after_asset="stock-lip-filler_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="CT", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Side-profile lip projection with hydrated, glossy finish at two weeks.",
+                page_views=152, tagline="Projection with a soft finish",
+                before_asset="catalyst-lip-filler_before.jpg", after_asset="catalyst-lip-filler_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="RR", treatment="BBL + Moxi Laser", category=SessionCategory.skin.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Combined BBL and Moxi laser series clearing sun damage and evening tone.",
+                page_views=204, tagline="Sun damage visibly cleared",
+                before_asset="refine-bbl-moxi_before.jpg", after_asset="refine-bbl-moxi_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="RB", treatment="BBL Laser", category=SessionCategory.skin.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="BBL corrective series reducing redness and diffuse pigment.",
+                page_views=117, tagline="Calmer, clearer complexion",
+                before_asset="refine-bbl-laser_before.jpg", after_asset="refine-bbl-laser_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="RM", treatment="BBL Melasma Treatment", category=SessionCategory.skin.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Targeted BBL protocol lifting melasma across the forehead.",
+                page_views=109, tagline="Forehead pigment lifted",
+                before_asset="refine-bbl-melasma_before.jpg", after_asset="refine-bbl-melasma_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="WR", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Revanesse lip filler restoring border definition and even fullness.",
+                page_views=138, tagline="Even fullness with Revanesse",
+                before_asset="woodbury-lip-revanesse_before.jpg", after_asset="woodbury-lip-revanesse_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="WL", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Progressive lip filler documented across the treatment arc.",
+                page_views=126, tagline="A documented progression",
+                before_asset="woodbury-lip-fillers_before.jpg", after_asset="woodbury-lip-fillers_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="WV", treatment="Lip Filler", category=SessionCategory.fillers.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Volume-focused lip filler shown in matched profile views.",
+                page_views=131, tagline="Volume, profile-matched",
+                before_asset="woodbury-lip-volume_before.jpg", after_asset="woodbury-lip-volume_after.jpg"),
+            DemoSessionSpec(
+                patient_initials="PT", treatment="PDO Thread Lift", category=SessionCategory.other.value,
+                published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
+                treatment_details="Full-face PDO thread lift with visible jawline and mid-face repositioning.",
+                page_views=195, tagline="Repositioned, still natural",
+                before_asset="pdo-threads_before.jpg", after_asset="pdo-threads_after.jpg"),
         ),
     ),
 )
@@ -570,14 +702,17 @@ def _seed_session(
     db.add(session)
     db.flush()
 
-    before_bytes = _generate_demo_image(
-        practice_name=spec.name,
-        treatment=session_spec.treatment,
-        tagline=session_spec.tagline,
-        theme=spec.theme,
-        variant="before",
-        seed=session_index * 11 + len(spec.name),
-    )
+    if session_spec.before_asset:
+        before_bytes = (SEED_ASSETS_DIR / session_spec.before_asset).read_bytes()
+    else:
+        before_bytes = _generate_demo_image(
+            practice_name=spec.name,
+            treatment=session_spec.treatment,
+            tagline=session_spec.tagline,
+            theme=spec.theme,
+            variant="before",
+            seed=session_index * 11 + len(spec.name),
+        )
     before_original_key, before_web_key, before_width, before_height = _store_session_image(
         session=session,
         image_kind="before",
@@ -591,14 +726,17 @@ def _seed_session(
     session.sign_hash = session.capture_hash
 
     if session_spec.published:
-        after_bytes = _generate_demo_image(
-            practice_name=spec.name,
-            treatment=session_spec.treatment,
-            tagline=session_spec.tagline,
-            theme=spec.theme,
-            variant="after",
-            seed=session_index * 17 + len(spec.slug),
-        )
+        if session_spec.after_asset:
+            after_bytes = (SEED_ASSETS_DIR / session_spec.after_asset).read_bytes()
+        else:
+            after_bytes = _generate_demo_image(
+                practice_name=spec.name,
+                treatment=session_spec.treatment,
+                tagline=session_spec.tagline,
+                theme=spec.theme,
+                variant="after",
+                seed=session_index * 17 + len(spec.slug),
+            )
         after_original_key, after_web_key, after_width, after_height = _store_session_image(
             session=session,
             image_kind="after",
