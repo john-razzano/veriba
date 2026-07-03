@@ -20,9 +20,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     database_url: str = "sqlite:///./veriba.db"
     redis_url: str = "redis://localhost:6379/0"
-    storage_backend: str = "local"
-    storage_root: str = "/app/storage"
-    public_storage_base_url: str = "http://localhost:8000/storage"
+    public_storage_base_url: str = "http://localhost:9000/veriba"
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"

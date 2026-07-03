@@ -1,9 +1,7 @@
 import logging
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 import app.models  # noqa: F401
 from app.api.router import api_router
@@ -19,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    os.makedirs(settings.storage_root, exist_ok=True)
 
     app = FastAPI(
         title=settings.app_name,
@@ -39,7 +36,6 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.api_prefix)
-    app.mount("/storage", StaticFiles(directory=settings.storage_root), name="storage")
 
     @app.on_event("startup")
     def on_startup() -> None:
