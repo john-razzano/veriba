@@ -11,8 +11,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.core.responses import register_exception_handlers
 from app.core.security import utcnow
-from app.db.base import Base
-from app.db.session import engine
+from app.db.migrations import run_migrations
 from app.scripts.seed_internal_admin import ensure_internal_admin
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,8 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def on_startup() -> None:
-        Base.metadata.create_all(bind=engine)
+        if settings.run_migrations_on_startup:
+            run_migrations()
         if settings.seed_internal_admin_on_startup:
             result = ensure_internal_admin()
             logger.info(

@@ -33,6 +33,11 @@ def get_current_user(
 
 
 def get_current_practice(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Practice:
+    if user.practice_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not associated with a practice",
+        )
     practice = db.scalar(select(Practice).where(Practice.id == user.practice_id))
     if practice is None:
         raise HTTPException(status_code=404, detail="Practice not found")

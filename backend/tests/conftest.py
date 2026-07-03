@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_veriba.db"
+os.environ["RUN_MIGRATIONS_ON_STARTUP"] = "false"
 os.environ["STORAGE_BACKEND"] = "local"
 os.environ["STORAGE_ROOT"] = str(Path(__file__).resolve().parent / "storage")
 os.environ["PUBLIC_STORAGE_BASE_URL"] = "http://testserver/storage"

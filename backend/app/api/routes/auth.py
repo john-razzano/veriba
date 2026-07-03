@@ -48,6 +48,31 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail="Email already in use")
 
+    if payload.role == "member":
+        user = User(
+            email=payload.email.lower(),
+            password_hash=hash_password(payload.password),
+            name=payload.name,
+            initials=derive_initials(payload.name),
+            role=Role.member.value,
+            practice_id=None,
+        )
+        db.add(user)
+        db.flush()
+
+        tokens = issue_tokens(db, user)
+        db.commit()
+        db.refresh(user)
+
+        return success_response(
+            {
+                "user": serialize_user(user),
+                "practice": None,
+                **tokens,
+            },
+            status_code=201,
+        )
+
     practice = Practice(
         name=payload.practice_name,
         location=payload.practice_location,

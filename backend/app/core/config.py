@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Veriba Backend"
     debug: bool = False
+    run_migrations_on_startup: bool = True
     seed_internal_admin_on_startup: bool = False
     version: str = "0.1.0"
     api_prefix: str = "/api"

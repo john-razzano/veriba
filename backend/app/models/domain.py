@@ -13,6 +13,7 @@ class Role(str, Enum):
     owner = "owner"
     provider = "provider"
     staff = "staff"
+    member = "member"
     internal_admin = "internal_admin"
 
 
@@ -113,9 +114,11 @@ class User(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     initials: Mapped[str] = mapped_column(String(5), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default=Role.owner.value)
-    practice_id: Mapped[str] = mapped_column(ForeignKey("practices.id"), index=True)
+    practice_id: Mapped[str | None] = mapped_column(
+        ForeignKey("practices.id"), index=True, nullable=True
+    )
 
-    practice: Mapped[Practice] = relationship(
+    practice: Mapped[Practice | None] = relationship(
         back_populates="users", foreign_keys=[practice_id]
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")

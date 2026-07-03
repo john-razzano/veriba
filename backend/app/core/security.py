@@ -55,7 +55,7 @@ def decode_token(token: str, expected_type: str) -> dict:
     return payload
 
 
-def create_access_token(subject: str, practice_id: str, role: str) -> str:
+def create_access_token(subject: str, practice_id: str | None, role: str) -> str:
     settings = get_settings()
     return create_token(
         subject=subject,
