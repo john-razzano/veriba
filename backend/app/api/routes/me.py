@@ -188,6 +188,41 @@ def list_follows(
 
 
 # ---------------------------------------------------------------------------
+# Results — sessions linked to the caller via followup email
+# ---------------------------------------------------------------------------
+
+@router.get("/results")
+def list_results(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sessions where any followup's patient_email matches the caller.
+    Includes unpublished sessions so members can see their own pending cases.
+    """
+    followups = db.scalars(
+        select(Followup)
+        .where(func.lower(Followup.patient_email) == current_user.email.lower())
+        .order_by(Followup.created_at.desc())
+    ).all()
+
+    seen_session_ids: set[str] = set()
+    items = []
+    for followup in followups:
+        if followup.session_id in seen_session_ids:
+            continue
+        seen_session_ids.add(followup.session_id)
+        photo_session = db.get(PhotoSession, followup.session_id)
+        practice = db.get(Practice, photo_session.practice_id)
+        owner = db.get(User, practice.owner_id) if practice.owner_id else None
+        card = serialize_public_session_card(photo_session, practice, owner=owner)
+        card["status"] = photo_session.status
+        card["consent_tier"] = photo_session.consent_tier
+        items.append(card)
+
+    return success_response({"sessions": items, "total": len(items)})
+
+
+# ---------------------------------------------------------------------------
 # Approvals (in-app consent)
 # ---------------------------------------------------------------------------
 

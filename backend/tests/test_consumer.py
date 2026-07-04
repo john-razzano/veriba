@@ -267,6 +267,54 @@ def test_approval_respond_mirrors_token_flow(client):
 _SVG = "M10 35 Q30 10 50 30 T90 25"
 
 
+# ---------------------------------------------------------------------------
+# Results
+# ---------------------------------------------------------------------------
+
+def test_results_shows_own_sessions_including_unpublished(client):
+    provider_token, _ = _register_provider(client, "prov_res@test.com")
+    member_token = _register_member(client, "patient_res@test.com")
+
+    session_id = _make_published_session(client, provider_token)
+    _create_sent_followup(client, provider_token, session_id, "patient_res@test.com")
+
+    mh = {"Authorization": f"Bearer {member_token}"}
+    r = client.get("/api/me/results", headers=mh)
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["total"] == 1
+    s = data["sessions"][0]
+    assert s["id"] == session_id
+    assert "status" in s
+    assert "consent_tier" in s
+
+
+def test_results_deduplicates_multiple_followups_on_same_session(client):
+    provider_token, _ = _register_provider(client, "prov_res2@test.com")
+    member_token = _register_member(client, "patient_res2@test.com")
+
+    session_id = _make_published_session(client, provider_token)
+    # Create two followups on the same session
+    _create_sent_followup(client, provider_token, session_id, "patient_res2@test.com")
+    _create_sent_followup(client, provider_token, session_id, "patient_res2@test.com")
+
+    mh = {"Authorization": f"Bearer {member_token}"}
+    r = client.get("/api/me/results", headers=mh)
+    assert r.json()["data"]["total"] == 1  # deduplicated
+
+
+def test_results_does_not_show_other_users_sessions(client):
+    provider_token, _ = _register_provider(client, "prov_res3@test.com")
+    member_a = _register_member(client, "patient_resa@test.com")
+    member_b = _register_member(client, "patient_resb@test.com")
+
+    session_id = _make_published_session(client, provider_token)
+    _create_sent_followup(client, provider_token, session_id, "patient_resa@test.com")
+
+    r = client.get("/api/me/results", headers={"Authorization": f"Bearer {member_b}"})
+    assert r.json()["data"]["total"] == 0
+
+
 def test_approval_respond_wrong_user_gets_403(client):
     provider_token, _ = _register_provider(client, "prov4@test.com")
     _register_member(client, "owner@test.com")

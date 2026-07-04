@@ -255,11 +255,14 @@ def serialize_patient_context(practice: Practice, session: Session, followup: Fo
 
 
 def serialize_public_session(session: Session) -> dict:
+    # partial consent = patient approved only with eyes blurred; the unobscured
+    # before image must not be surfaced publicly.
+    hide_before = session.consent_tier == ConsentTier.partial.value
     return {
         "id": session.id,
         "treatment": session.treatment,
         "category": session.category,
-        "before_image_url": _image_url(session.before_image_key),
+        "before_image_url": None if hide_before else _image_url(session.before_image_key),
         "after_image_url": _image_url(session.after_image_key),
         "obscure_mode": session.obscure_mode,
         "seo": serialize_seo(session),

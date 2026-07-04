@@ -221,6 +221,12 @@ def create_credit(
 def publish_if_needed(db: Session, session: PhotoSession, practice: Practice) -> None:
     from app.services.seo import generate_seo
 
+    # full_blur requires pixel-level image obscuration before publication.
+    # Hold at ready_to_publish until that tooling is implemented.
+    if session.consent_tier == ConsentTier.full_blur.value:
+        session.status = SessionStatus.ready_to_publish.value
+        return
+
     if practice.auto_publish:
         now = utcnow()
         session.published_at = now

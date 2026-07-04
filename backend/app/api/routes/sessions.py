@@ -54,6 +54,12 @@ def _publish_session(
 ) -> dict:
     if not is_publishable(session):
         raise HTTPException(status_code=400, detail="Session is not ready to publish")
+    if session.consent_tier == ConsentTier.full_blur.value:
+        raise HTTPException(
+            status_code=400,
+            detail="full_blur sessions require pixel-level image obscuration before publishing. "
+                   "Session is held at ready_to_publish.",
+        )
 
     session.published_at = utcnow()
     session.status = SessionStatus.published.value
@@ -180,7 +186,11 @@ async def upload_image(
         session.after_provenance = "Uploaded in-app by provider"
 
     session.status = update_status_after_image_upload(session)
-    if session.after_image_key and session.consent_tier and session.consent_tier != ConsentTier.decline.value:
+    if (
+        session.after_image_key
+        and session.consent_tier
+        and session.consent_tier not in {ConsentTier.decline.value, ConsentTier.full_blur.value}
+    ):
         if practice.auto_publish:
             _publish_session(db, session, practice, session.published_destinations or ["widget", "gallery"])
         else:
@@ -290,6 +300,9 @@ def record_consent(
 
     if payload.consent_tier.value == ConsentTier.decline.value:
         session.status = SessionStatus.declined.value
+    elif payload.consent_tier.value == ConsentTier.full_blur.value:
+        # Hold at ready_to_publish until pixel-level obscuration is implemented.
+        session.status = SessionStatus.ready_to_publish.value
     elif session.after_image_key:
         if practice.auto_publish:
             _publish_session(db, session, practice, session.published_destinations or ["widget", "gallery"])

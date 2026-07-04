@@ -432,8 +432,13 @@ def list_synthetic_practice_ids(db: OrmSession) -> list[str]:
     return ids
 
 
-def delete_synthetic_records(db: OrmSession) -> dict[str, int]:
+def delete_synthetic_records(db: OrmSession, *, slug: str | None = None) -> dict[str, int]:
     practice_ids = list_synthetic_practice_ids(db)
+    if slug:
+        slugged = db.scalars(
+            select(Practice).where(Practice.id.in_(practice_ids), Practice.widget_slug == slug)
+        ).all()
+        practice_ids = [p.id for p in slugged]
     if not practice_ids:
         return {
             "practices": 0,
@@ -861,6 +866,6 @@ def seed_demo_dataset(*, reset_first: bool = False) -> dict:
         }
 
 
-def reset_demo_dataset() -> dict:
+def reset_demo_dataset(*, slug: str | None = None) -> dict:
     with SessionLocal() as db:
-        return delete_synthetic_records(db)
+        return delete_synthetic_records(db, slug=slug)
