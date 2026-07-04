@@ -16,10 +16,12 @@ from app.models import (
     ConsentTier,
     Credit,
     CreditStatus,
+    FollowedPractice,
     ObscureMode,
     Practice,
     RefreshToken,
     Role,
+    SavedCase,
     Session,
     SessionCategory,
     SessionStatus,
@@ -450,6 +452,12 @@ def delete_synthetic_records(db: OrmSession) -> dict[str, int]:
     refresh_tokens = (
         db.scalars(select(RefreshToken).where(RefreshToken.user_id.in_(user_ids))).all() if user_ids else []
     )
+    saved_cases = (
+        db.scalars(select(SavedCase).where(SavedCase.session_id.in_(session_ids))).all() if session_ids else []
+    )
+    followed_practices = (
+        db.scalars(select(FollowedPractice).where(FollowedPractice.practice_id.in_(practice_ids))).all()
+    )
 
     storage = get_storage()
     storage_objects = 0
@@ -458,6 +466,10 @@ def delete_synthetic_records(db: OrmSession) -> dict[str, int]:
 
     db.execute(update(Practice).where(Practice.id.in_(practice_ids)).values(owner_id=None))
 
+    for item in followed_practices:
+        db.delete(item)
+    for item in saved_cases:
+        db.delete(item)
     for credit in credits:
         db.delete(credit)
     for token in refresh_tokens:

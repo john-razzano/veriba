@@ -11,17 +11,14 @@ from app.core.security import utcnow
 from app.db.session import SessionLocal
 from app.models import Credit, ConsentTier, Followup, FollowupStatus, Practice, Session as PhotoSession, SessionStatus
 from app.schemas.patient import PatientConsentRequest
-from app.services.images import compress_for_web, image_hash, read_upload_bytes, render_signature_png
+from app.services.consent import apply_consent
+from app.services.images import compress_for_web, image_hash, read_upload_bytes
 from app.services.logic import (
-    build_publish_hash,
     create_credit,
     expire_followup_if_needed,
-    next_status_after_consent,
-    obscure_mode_for_consent,
-    practice_default_discount,
+    publish_if_needed,
 )
-from app.services.seo import generate_seo
-from app.services.serializers import serialize_credit, serialize_patient_context
+from app.services.serializers import serialize_patient_context
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/patient/upload", tags=["patient"])
@@ -46,23 +43,6 @@ def _invalid_token_response():
             "error": "This link has expired. Please contact your provider for a new one.",
         }
     )
-
-
-def _publish_if_needed(db: Session, session: PhotoSession, practice: Practice) -> None:
-    if practice.auto_publish:
-        session.published_at = utcnow()
-        session.status = SessionStatus.published.value
-        session.published_destinations = ["widget", "gallery"]
-        seo = generate_seo(db, session=session, practice=practice)
-        session.seo_title = seo["title"]
-        session.seo_alt_text = seo["alt_text"]
-        session.seo_meta_description = seo["meta_description"]
-        session.seo_filename = seo["filename"]
-        session.seo_url_slug = seo["url_slug"]
-        session.seo_template_variant = seo["template_variant"]
-        session.publish_hash = build_publish_hash(session, session.published_at)
-    else:
-        session.status = next_status_after_consent(practice)
 
 
 @router.get("/{token}")
@@ -132,7 +112,7 @@ async def upload_patient_photo(request: Request, token: str, file: UploadFile = 
                 consent_tier=session.consent_tier,
                 followup=followup,
             )
-            _publish_if_needed(db, session, practice)
+            publish_if_needed(db, session, practice)
             followup.status = FollowupStatus.completed.value
         else:
             followup.status = FollowupStatus.opened.value
@@ -163,46 +143,26 @@ def submit_patient_consent(request: Request, token: str, payload: PatientConsent
         if not session.after_image_key:
             raise HTTPException(status_code=400, detail="After photo must be uploaded before consent")
 
-        session.consent_tier = payload.consent_tier.value
-        session.consent_at = utcnow()
-        session.discount_applied = practice_default_discount(practice, payload.consent_tier.value)
-        session.obscure_mode = obscure_mode_for_consent(payload.consent_tier.value)
-        session.consent_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else None)
-        session.consent_user_agent = request.headers.get("user-agent")
-        session.consent_form_version = payload.consent_form_version
-
-        if payload.signature_data and payload.consent_tier.value != ConsentTier.decline.value:
-            signature_key = f"{practice.id}/sessions/{session.id}/consent/signature.png"
-            get_storage().save_bytes(signature_key, render_signature_png(payload.signature_data))
-            session.consent_signature_key = signature_key
-
-        reward = None
-        if payload.consent_tier.value == ConsentTier.decline.value:
-            session.status = SessionStatus.declined.value
-            session.discount_applied = 0
-        else:
-            credit = create_credit(
-                db,
-                practice=practice,
-                session=session,
-                patient_email=followup.patient_email,
-                consent_tier=payload.consent_tier.value,
-                followup=followup,
-            )
-            reward = serialize_credit(credit)
-            _publish_if_needed(db, session, practice)
-
-        followup.status = FollowupStatus.completed.value
-        db.add_all([session, followup])
-        db.commit()
+        result = apply_consent(
+            db,
+            followup=followup,
+            practice=practice,
+            session=session,
+            consent_tier=payload.consent_tier.value,
+            signature_svg=payload.signature_data,
+            patient_email=followup.patient_email,
+            request_ip=request.headers.get("x-forwarded-for", request.client.host if request.client else None),
+            request_ua=request.headers.get("user-agent"),
+            consent_form_version=payload.consent_form_version,
+        )
         return success_response(
             {
                 "success": True,
-                "consent_tier": session.consent_tier,
-                "reward_earned": reward,
+                "consent_tier": result.consent_tier,
+                "reward_earned": result.reward,
                 "message": (
-                    f"Thank you! Your reward code is {reward['code']}."
-                    if reward
+                    f"Thank you! Your reward code is {result.reward['code']}."
+                    if result.reward
                     else "Your sharing preference has been saved."
                 ),
             }

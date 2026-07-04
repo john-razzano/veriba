@@ -7,6 +7,7 @@ from app.api.routes import (
     gallery,
     health,
     internal,
+    me,
     patient,
     practices,
     sessions,
@@ -26,3 +27,4 @@ api_router.include_router(gallery.router)
 api_router.include_router(widget.router)
 api_router.include_router(health.router)
 api_router.include_router(internal.router)
+api_router.include_router(me.router)

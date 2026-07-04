@@ -218,6 +218,26 @@ def create_credit(
     return credit
 
 
+def publish_if_needed(db: Session, session: PhotoSession, practice: Practice) -> None:
+    from app.services.seo import generate_seo
+
+    if practice.auto_publish:
+        now = utcnow()
+        session.published_at = now
+        session.status = SessionStatus.published.value
+        session.published_destinations = ["widget", "gallery"]
+        seo = generate_seo(db, session=session, practice=practice)
+        session.seo_title = seo["title"]
+        session.seo_alt_text = seo["alt_text"]
+        session.seo_meta_description = seo["meta_description"]
+        session.seo_filename = seo["filename"]
+        session.seo_url_slug = seo["url_slug"]
+        session.seo_template_variant = seo["template_variant"]
+        session.publish_hash = build_publish_hash(session, now)
+    else:
+        session.status = next_status_after_consent(practice)
+
+
 def is_publishable(session: PhotoSession) -> bool:
     return bool(
         session.before_image_key

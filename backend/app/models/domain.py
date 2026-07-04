@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.security import utcnow
@@ -244,3 +244,31 @@ class Credit(Base, TimestampMixin):
     practice: Mapped[Practice] = relationship(back_populates="credits")
     session: Mapped[Session] = relationship(back_populates="credits")
     followup: Mapped[Followup | None] = relationship(back_populates="credits")
+
+
+class SavedCase(Base, TimestampMixin):
+    __tablename__ = "saved_cases"
+    __table_args__ = (UniqueConstraint("user_id", "session_id", name="uq_saved_cases_user_session"),)
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), index=True)
+
+    user: Mapped["User"] = relationship()
+    session: Mapped["Session"] = relationship()
+
+
+class FollowedPractice(Base, TimestampMixin):
+    __tablename__ = "followed_practices"
+    __table_args__ = (UniqueConstraint("user_id", "practice_id", name="uq_followed_practices_user_practice"),)
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    practice_id: Mapped[str] = mapped_column(ForeignKey("practices.id"), index=True)
+
+    user: Mapped["User"] = relationship()
+    practice: Mapped["Practice"] = relationship()
