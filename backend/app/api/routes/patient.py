@@ -12,7 +12,7 @@ from app.db.session import SessionLocal
 from app.models import Credit, ConsentTier, Followup, FollowupStatus, Practice, Session as PhotoSession, SessionStatus
 from app.schemas.patient import PatientConsentRequest
 from app.services.consent import apply_consent
-from app.services.images import compress_for_web, image_hash, read_upload_bytes
+from app.services.images import compress_for_web, compute_blurhash, image_hash, read_upload_bytes
 from app.services.logic import (
     create_credit,
     expire_followup_if_needed,
@@ -97,6 +97,7 @@ async def upload_patient_photo(request: Request, token: str, file: UploadFile = 
         session.after_image_key = web_key
         session.after_image_width = width
         session.after_image_height = height
+        session.after_blurhash = compute_blurhash(compressed)
         session.after_capture_hash = server_hash
         session.after_captured_at = utcnow()
         session.after_provenance = "Uploaded by patient via email link"

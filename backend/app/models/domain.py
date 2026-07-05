@@ -94,14 +94,19 @@ class Practice(Base, TimestampMixin):
     auto_publish: Mapped[bool] = mapped_column(Boolean, default=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_blurhash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     booking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    featured_session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id"), nullable=True)
+    services: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     owner_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], post_update=True)
     users: Mapped[list["User"]] = relationship(
         back_populates="practice", foreign_keys="User.practice_id"
     )
-    sessions: Mapped[list["Session"]] = relationship(back_populates="practice")
+    sessions: Mapped[list["Session"]] = relationship(
+        back_populates="practice", foreign_keys="[Session.practice_id]"
+    )
     followups: Mapped[list["Followup"]] = relationship(back_populates="practice")
     credits: Mapped[list["Credit"]] = relationship(back_populates="practice")
 
@@ -159,6 +164,8 @@ class Session(Base, TimestampMixin):
     after_provenance: Mapped[str | None] = mapped_column(String(50), nullable=True)
     consent_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     consent_signature_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    before_blurhash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    after_blurhash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consent_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
     consent_user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -176,7 +183,7 @@ class Session(Base, TimestampMixin):
     page_views: Mapped[int] = mapped_column(Integer, default=0)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    practice: Mapped[Practice] = relationship(back_populates="sessions")
+    practice: Mapped[Practice] = relationship(back_populates="sessions", foreign_keys="[Session.practice_id]")
     followups: Mapped[list["Followup"]] = relationship(back_populates="session")
     credits: Mapped[list["Credit"]] = relationship(back_populates="session")
 

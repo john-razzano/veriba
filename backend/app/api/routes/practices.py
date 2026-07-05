@@ -5,13 +5,15 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from sqlalchemy import select
+
 from app.api.deps import get_current_practice
 from app.core.responses import success_response
 from app.core.security import utcnow
 from app.db.session import get_db
 from app.models import Practice, Session as PhotoSession, SessionStatus
 from app.schemas.practice import PracticeUpdateRequest
-from app.services.images import compress_for_web, read_upload_bytes
+from app.services.images import compress_for_web, compute_blurhash, read_upload_bytes
 from app.services.serializers import serialize_practice
 from app.services.storage import get_storage
 
@@ -51,11 +53,31 @@ def update_practice(
         if payload.default_discounts.full_blur is not None:
             practice.default_discount_blur = payload.default_discounts.full_blur
 
-    # bio and booking_url are explicitly nullable — only update when provided
     if "bio" in payload.model_fields_set:
         practice.bio = payload.bio or None
     if "booking_url" in payload.model_fields_set:
         practice.booking_url = payload.booking_url
+    if "services" in payload.model_fields_set:
+        practice.services = payload.services
+    if "featured_session_id" in payload.model_fields_set:
+        if payload.featured_session_id is None:
+            practice.featured_session_id = None
+        else:
+            pinned = db.scalar(
+                select(PhotoSession).where(
+                    PhotoSession.id == payload.featured_session_id,
+                    PhotoSession.practice_id == practice.id,
+                    PhotoSession.status == SessionStatus.published.value,
+                    PhotoSession.archived_at.is_(None),
+                )
+            )
+            if pinned is None:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=400,
+                    detail="featured_session_id must refer to a published session belonging to this practice",
+                )
+            practice.featured_session_id = payload.featured_session_id
 
     db.add(practice)
     db.commit()
@@ -74,9 +96,10 @@ async def upload_avatar(
     key = f"{practice.id}/profile/avatar.jpg"
     avatar_url = get_storage().save_bytes(key, compressed, content_type="image/jpeg")
     practice.avatar_key = key
+    practice.avatar_blurhash = compute_blurhash(compressed)
     db.add(practice)
     db.commit()
-    return success_response({"avatar_url": avatar_url})
+    return success_response({"avatar_url": avatar_url, "avatar_blurhash": practice.avatar_blurhash})
 
 
 @router.delete("/me/avatar")

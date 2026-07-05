@@ -30,7 +30,19 @@ def _owner_for_practice(db, practice: Practice) -> User | None:
     return db.scalar(select(User).where(User.id == practice.owner_id))
 
 
-def _featured_session_for_practice(db, practice_id: str) -> PhotoSession | None:
+def _featured_session_for_practice(db, practice_id: str, *, practice: Practice | None = None) -> PhotoSession | None:
+    # Use pinned session when set and still published/not archived
+    if practice is not None and practice.featured_session_id:
+        pinned = db.scalar(
+            select(PhotoSession).where(
+                PhotoSession.id == practice.featured_session_id,
+                PhotoSession.status == SessionStatus.published.value,
+                PhotoSession.archived_at.is_(None),
+            )
+        )
+        if pinned:
+            return pinned
+    # Fall back to latest published
     return db.scalar(
         select(PhotoSession)
         .where(
@@ -92,7 +104,7 @@ def public_gallery_home(
         featured_practices = []
         for practice, published_session_count in practice_rows:
             owner = _owner_for_practice(db, practice)
-            featured_session = _featured_session_for_practice(db, practice.id)
+            featured_session = _featured_session_for_practice(db, practice.id, practice=practice)
             featured_practices.append(
                 serialize_public_practice(
                     practice,
@@ -268,7 +280,7 @@ def list_public_practices(
         practices = []
         for practice, published_session_count in rows:
             owner = _owner_for_practice(db, practice)
-            featured_session = _featured_session_for_practice(db, practice.id)
+            featured_session = _featured_session_for_practice(db, practice.id, practice=practice)
             practices.append(
                 serialize_public_practice(
                     practice,
@@ -309,7 +321,7 @@ def get_public_practice(practice_slug: str):
             raise HTTPException(status_code=404, detail="Provider has no public cases")
 
         owner = _owner_for_practice(db, practice)
-        featured_session = published_sessions[0]
+        featured_session = _featured_session_for_practice(db, practice.id, practice=practice) or published_sessions[0]
         return success_response(
             {
                 "practice": serialize_public_practice(

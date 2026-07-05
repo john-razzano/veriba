@@ -33,6 +33,8 @@ class PracticeUpdateRequest(BaseModel):
     auto_publish: bool | None = None
     bio: str | None = Field(default=None, max_length=600)
     booking_url: str | None = None
+    featured_session_id: str | None = None
+    services: list[str] | None = None
 
     @field_validator("website", "booking_url", mode="before")
     @classmethod
@@ -40,3 +42,26 @@ class PracticeUpdateRequest(BaseModel):
         if not isinstance(v, str):
             return v  # type: ignore[return-value]
         return _normalize_url(v)
+
+    @field_validator("services", mode="before")
+    @classmethod
+    def validate_services(cls, v: object) -> list[str] | None:
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            raise ValueError("services must be a list")
+        if len(v) > 30:
+            raise ValueError("services must have at most 30 items")
+        seen: set[str] = set()
+        result: list[str] = []
+        for item in v:
+            stripped = str(item).strip()
+            if not stripped:
+                continue
+            if len(stripped) > 60:
+                raise ValueError("each service must be at most 60 characters")
+            lower = stripped.lower()
+            if lower not in seen:
+                seen.add(lower)
+                result.append(stripped)
+        return result or None

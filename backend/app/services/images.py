@@ -50,6 +50,23 @@ def image_hash(data: bytes) -> str:
     return sha256_hexdigest(data)
 
 
+def compute_blurhash(image_bytes: bytes, components_x: int = 4, components_y: int = 3) -> str | None:
+    """Encode a blurhash from image bytes. Resizes to ≤32px first for performance."""
+    try:
+        import blurhash as _bh
+        img = Image.open(BytesIO(image_bytes)).convert("RGB")
+        max_dim = 32
+        w, h = img.size
+        if max(w, h) > max_dim:
+            scale = max_dim / max(w, h)
+            img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
+        # blurhash expects a 3-D list[y][x][r,g,b]; PIL Image doesn't implement __len__
+        pixel_array = [[list(img.getpixel((x, y))) for x in range(img.width)] for y in range(img.height)]
+        return _bh.encode(pixel_array, components_x=components_x, components_y=components_y)
+    except Exception:
+        return None
+
+
 def render_signature_png(signature_svg: str) -> bytes:
     svg_markup = signature_svg.strip()
     if not svg_markup.startswith("<svg"):

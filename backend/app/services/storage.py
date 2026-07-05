@@ -81,6 +81,14 @@ class MinioStorageService:
             self.client.remove_object(self.bucket, key)
         return len(keys)
 
+    def get_bytes(self, key: str) -> bytes:
+        response = self.client.get_object(self.bucket, key)
+        try:
+            return response.read()
+        finally:
+            response.close()
+            response.release_conn()
+
     def healthcheck(self) -> str:
         try:
             self.client.bucket_exists(self.bucket)

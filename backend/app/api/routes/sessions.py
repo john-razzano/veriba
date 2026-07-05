@@ -17,7 +17,7 @@ from app.models import (
     SessionStatus,
 )
 from app.schemas.session import ConsentRequest, PublishRequest, SessionCreateRequest, SessionUpdateRequest
-from app.services.images import compress_for_web, image_hash, read_upload_bytes, render_signature_png
+from app.services.images import compress_for_web, compute_blurhash, image_hash, read_upload_bytes, render_signature_png
 from app.services.logic import (
     build_publish_hash,
     ensure_session_belongs_to_practice,
@@ -165,11 +165,13 @@ async def upload_image(
     hash_match = capture_hash is None or capture_hash == server_hash
 
     parsed_captured_at = captured_at
+    blurhash_val = compute_blurhash(compressed)
     if image_kind == "before":
         session.before_original_image_key = original_key
         session.before_image_key = web_key
         session.before_image_width = width
         session.before_image_height = height
+        session.before_blurhash = blurhash_val
         session.capture_hash = capture_hash or server_hash
         session.capture_lat = capture_lat
         session.capture_lng = capture_lng
@@ -181,6 +183,7 @@ async def upload_image(
         session.after_image_key = web_key
         session.after_image_width = width
         session.after_image_height = height
+        session.after_blurhash = blurhash_val
         session.after_capture_hash = server_hash
         session.after_captured_at = parsed_captured_at or session.after_captured_at or utcnow()
         session.after_provenance = "Uploaded in-app by provider"

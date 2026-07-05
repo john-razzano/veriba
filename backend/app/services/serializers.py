@@ -50,7 +50,10 @@ def serialize_practice(practice: Practice) -> dict:
         "auto_publish": practice.auto_publish,
         "bio": practice.bio,
         "avatar_url": _image_url(practice.avatar_key),
+        "avatar_blurhash": practice.avatar_blurhash,
         "booking_url": practice.booking_url,
+        "featured_session_id": practice.featured_session_id,
+        "services": practice.services,
         "owner_id": practice.owner_id,
         "created_at": _iso(practice.created_at),
         "updated_at": _iso(practice.updated_at),
@@ -266,7 +269,9 @@ def serialize_public_session(session: Session) -> dict:
         "treatment": session.treatment,
         "category": session.category,
         "before_image_url": None if hide_before else _image_url(session.before_image_key),
+        "before_blurhash": None if hide_before else session.before_blurhash,
         "after_image_url": _image_url(session.after_image_key),
+        "after_blurhash": session.after_blurhash,
         "obscure_mode": session.obscure_mode,
         "seo": serialize_seo(session),
         "chain_of_custody": {
@@ -312,7 +317,9 @@ def serialize_public_practice(
         ),
         "bio": practice.bio,
         "avatar_url": _image_url(practice.avatar_key),
+        "avatar_blurhash": practice.avatar_blurhash,
         "booking_url": practice.booking_url,
+        "services": practice.services,
     }
 
 

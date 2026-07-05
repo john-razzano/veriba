@@ -26,6 +26,9 @@ class _InMemoryStorage:
             del self._files[k]
         return len(keys)
 
+    def get_bytes(self, key: str) -> bytes:
+        return self._files.get(key, b"")
+
     def healthcheck(self) -> str:
         return "connected"
 
