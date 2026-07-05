@@ -75,3 +75,65 @@ seed time (reuse the placeholder-art helpers) or ship a small `seed_assets/ateli
 `curl` sequence as `owner+atelier@veriba-demo.studio`: PATCH bio + booking_url,
 upload an avatar, then `GET /api/gallery/practices/veriba-atelier` shows all three
 publicly. Report results + push to main.
+
+---
+
+# Phase 2 (added July 5) — featured case, services, blurhash
+
+Same conventions as Phase 1. One migration (0005) covers everything below.
+
+## 1. Schema (migration 0005)
+
+```
+practices.featured_session_id  String(36) FK sessions.id, nullable
+practices.services             JSON, nullable        # list[str], provider-curated
+sessions.before_blurhash       String(64), nullable
+sessions.after_blurhash        String(64), nullable
+```
+
+(Hide/reorder of the public grid is deliberately OUT of scope — unpublish already
+covers removal; revisit only if providers ask.)
+
+## 2. Featured case
+
+- `PATCH /api/practices/me` accepts `featured_session_id: str | null`.
+  Validate: session exists, belongs to the practice, and is `published` (400
+  otherwise); null clears the pin.
+- `GET /api/gallery/practices/{slug}`: the `featured_session` used in
+  `serialize_public_practice` becomes the pinned session when set (fall back to
+  latest published, as today). Also include `featured_session_id` on the
+  provider-facing practice payload so the app can render the pin state.
+- If the featured session is later unpublished/archived, treat as unset (don't 500).
+
+## 3. Services (persist what the app currently keeps client-side)
+
+- `PATCH /api/practices/me` accepts `services: list[str] | null` — max 30 items,
+  each 1..60 chars, strip + dedupe case-insensitively, preserve order.
+- Include `services` in provider-facing AND public practice serializers (the app's
+  clinic page will render a services strip).
+
+## 4. Blurhash placeholders
+
+- Add the pure-python `blurhash` package to pyproject dependencies.
+- In the session image upload path (and the practice avatar upload), after
+  `compress_for_web`, compute a blurhash from a small thumbnail (e.g. resize the
+  web image to ≤32px on the long edge first — encoding full-size images is slow);
+  components 4x3. Store on the session (`before_blurhash` / `after_blurhash`) or
+  practice (`avatar_blurhash` — add to the migration too, String(64) nullable).
+- Serialize: `before_blurhash`/`after_blurhash` on public session payloads
+  (card + case study); `avatar_blurhash` on practice payloads.
+- **Backfill**: `python -m app.scripts.backfill_blurhashes` — iterate sessions with
+  image keys but null hashes, fetch web image from storage, compute, save; print a
+  summary. Run it once on the live DB after deploy.
+- Seeded demo data should get hashes via the backfill (or compute at seed time).
+
+## Acceptance
+
+- Tests: featured pin happy path + wrong-practice/unpublished rejection + cleared on
+  unpublish; services validation (count/length/dedupe); blurhash present after a
+  fresh upload; serializers expose all new fields; existing suites green.
+- `alembic upgrade head` clean on live DB; backfill run on live data — report how
+  many sessions/avatars were backfilled.
+- Curl check: PATCH services + featured for veriba-atelier, then
+  `GET /api/gallery/practices/veriba-atelier` shows `services`, pinned
+  `featured_session`, and sessions with `before_blurhash`/`after_blurhash`.
