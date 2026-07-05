@@ -345,3 +345,131 @@ def test_approval_respond_already_completed_gets_409(client):
     r2 = client.post(f"/api/me/approvals/{followup_id}/respond", headers=mh,
         json={"decision": "full_blur", "signature_svg": _SVG})
     assert r2.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# Activity feed
+# ---------------------------------------------------------------------------
+
+def _session_with_images(client, provider_token):
+    """Create a session with before+after images in pending_consent state (not published)."""
+    h = {"Authorization": f"Bearer {provider_token}"}
+    s = client.post("/api/sessions", json={
+        "patient_initials": "TP", "treatment": "Botox", "category": "Botox", "status": "draft",
+    }, headers=h)
+    assert s.status_code == 201
+    sid = s.json()["data"]["id"]
+    client.post(f"/api/sessions/{sid}/images/before", headers=h,
+        files={"file": ("b.jpg", TINY_JPEG, "image/jpeg")},
+        data={"capture_hash": "h1", "capture_lat": "34.0", "capture_lng": "-118.0"})
+    client.post(f"/api/sessions/{sid}/images/after", headers=h,
+        files={"file": ("a.jpg", TINY_JPEG, "image/jpeg")})
+    return sid
+
+
+def _complete_followup(client, provider_token, session_id, member_email, member_token):
+    """Create a sent followup, member responds (→ ready_to_publish), provider publishes."""
+    followup_id = _create_sent_followup(client, provider_token, session_id, member_email)
+    mh = {"Authorization": f"Bearer {member_token}"}
+    r = client.post(f"/api/me/approvals/{followup_id}/respond", headers=mh,
+        json={"decision": "full", "signature_svg": _SVG})
+    assert r.status_code == 200
+    # Provider publishes so the case_published event appears in the feed
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    pub = client.post(f"/api/sessions/{session_id}/publish", headers=ph,
+        json={"destinations": ["gallery"], "treatment_details": ""})
+    assert pub.status_code == 200
+    return followup_id
+
+
+def test_activity_member_sees_own_events(client):
+    provider_token, _ = _register_provider(client, "prov_act@test.com")
+    member_token = _register_member(client, "patient_act@test.com")
+
+    session_id = _session_with_images(client, provider_token)
+    _complete_followup(client, provider_token, session_id, "patient_act@test.com", member_token)
+
+    mh = {"Authorization": f"Bearer {member_token}"}
+    r = client.get("/api/me/activity", headers=mh)
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert "items" in data
+    assert "total" in data
+
+    kinds = {item["kind"] for item in data["items"]}
+    # approval_completed is always generated for a completed followup
+    assert "approval_completed" in kinds
+    # credit_earned since full consent was given
+    assert "credit_earned" in kinds
+    # case was published (by _make_published_session) + followup is completed
+    assert "case_published" in kinds
+
+    # All items have required fields with correct types
+    for item in data["items"]:
+        assert item["id"].startswith(item["kind"] + "-")
+        assert isinstance(item["text"], str) and item["text"]
+        assert isinstance(item["timestamp"], str)
+        assert "session_id" in item
+
+    assert data["total"] == len(data["items"])
+
+
+def test_activity_another_users_rows_never_leak(client):
+    provider_token, _ = _register_provider(client, "prov_act2@test.com")
+    member_a_token = _register_member(client, "act_a@test.com")
+    member_b_token = _register_member(client, "act_b@test.com")
+
+    session_id = _session_with_images(client, provider_token)
+    _complete_followup(client, provider_token, session_id, "act_a@test.com", member_a_token)
+
+    # member_b should see nothing
+    r = client.get("/api/me/activity", headers={"Authorization": f"Bearer {member_b_token}"})
+    assert r.status_code == 200
+    assert r.json()["data"]["total"] == 0
+    assert r.json()["data"]["items"] == []
+
+
+def test_activity_empty_returns_zero(client):
+    member_token = _register_member(client, "act_empty@test.com")
+    r = client.get("/api/me/activity", headers={"Authorization": f"Bearer {member_token}"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data == {"items": [], "total": 0}
+
+
+def test_activity_requires_auth(client):
+    r = client.get("/api/me/activity")
+    assert r.status_code == 401
+
+
+def test_activity_case_published_appears_at_most_once_per_session(client):
+    """A published session must produce exactly one case_published event regardless of
+    how many completed followups reference it."""
+    provider_token, _ = _register_provider(client, "prov_act3@test.com")
+    member_token = _register_member(client, "act_dedup@test.com")
+
+    session_id = _session_with_images(client, provider_token)
+    _complete_followup(client, provider_token, session_id, "act_dedup@test.com", member_token)
+
+    mh = {"Authorization": f"Bearer {member_token}"}
+    items = client.get("/api/me/activity", headers=mh).json()["data"]["items"]
+
+    published_ids = [i["id"] for i in items if i["kind"] == "case_published"]
+    # At most one case_published per session — IDs must be unique
+    assert len(published_ids) == len(set(published_ids)), "case_published IDs must be unique"
+    # Exactly one for this session
+    assert len(published_ids) == 1
+
+
+def test_activity_sorted_newest_first(client):
+    provider_token, _ = _register_provider(client, "prov_act4@test.com")
+    member_token = _register_member(client, "act_sort@test.com")
+
+    session_id = _session_with_images(client, provider_token)
+    _complete_followup(client, provider_token, session_id, "act_sort@test.com", member_token)
+
+    mh = {"Authorization": f"Bearer {member_token}"}
+    items = client.get("/api/me/activity", headers=mh).json()["data"]["items"]
+
+    timestamps = [item["timestamp"] for item in items]
+    assert timestamps == sorted(timestamps, reverse=True), "events must be newest-first"

@@ -1,12 +1,17 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.responses import success_response
+from app.core.security import utcnow
 from app.db.session import get_db
 from app.models import (
     ConsentTier,
+    Credit,
+    CreditStatus,
     Followup,
     FollowedPractice,
     FollowupStatus,
@@ -313,3 +318,116 @@ def respond_to_approval(
         "consent_tier": result.consent_tier,
         "reward_earned": result.reward,
     })
+
+
+# ---------------------------------------------------------------------------
+# Activity feed (Inbox)
+# ---------------------------------------------------------------------------
+
+def _naive(dt):
+    """Strip tz for cross-DB datetime comparison (SQLite=naive, PostgreSQL=tz-aware)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
+@router.get("/activity")
+def list_activity(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email_lower = current_user.email.lower()
+    now_naive = _naive(utcnow())
+    expiry_window = now_naive + timedelta(days=21)
+
+    followups = db.scalars(
+        select(Followup).where(func.lower(Followup.patient_email) == email_lower)
+    ).all()
+
+    credits = db.scalars(
+        select(Credit).where(func.lower(Credit.patient_email) == email_lower)
+    ).all()
+
+    # Cache practice lookups within this request
+    _practice_cache: dict[str, Practice] = {}
+
+    def _practice(pid: str) -> Practice | None:
+        if pid not in _practice_cache:
+            _practice_cache[pid] = db.get(Practice, pid)
+        return _practice_cache[pid]
+
+    events: list[dict] = []
+    published_session_ids: set[str] = set()  # deduplicate case_published
+
+    for followup in followups:
+        if followup.status != FollowupStatus.completed.value:
+            continue
+
+        photo_session = db.get(PhotoSession, followup.session_id)
+        practice = _practice(followup.practice_id)
+        if not photo_session or not practice:
+            continue
+
+        # approval_completed
+        ts = photo_session.consent_at or followup.updated_at
+        events.append({
+            "id": f"approval_completed-{followup.id}",
+            "kind": "approval_completed",
+            "text": (
+                f"You approved {practice.name}'s request to publish "
+                f"your {photo_session.treatment}."
+            ),
+            "timestamp": ts,
+            "session_id": followup.session_id,
+        })
+
+        # case_published — one event per session even if multiple followups
+        if (
+            photo_session.status == SessionStatus.published.value
+            and photo_session.published_at
+            and followup.session_id not in published_session_ids
+        ):
+            published_session_ids.add(followup.session_id)
+            events.append({
+                "id": f"case_published-{followup.session_id}",
+                "kind": "case_published",
+                "text": (
+                    f"{practice.name} published your {photo_session.treatment} "
+                    f"before & after."
+                ),
+                "timestamp": photo_session.published_at,
+                "session_id": followup.session_id,
+            })
+
+    for credit in credits:
+        practice = _practice(credit.practice_id)
+        if not practice:
+            continue
+
+        # credit_earned
+        events.append({
+            "id": f"credit_earned-{credit.id}",
+            "kind": "credit_earned",
+            "text": f"You earned a ${credit.amount} reward at {practice.name}.",
+            "timestamp": credit.earned_at,
+            "session_id": credit.session_id,
+        })
+
+        # credit_expiring — active credits expiring within 21 days
+        if credit.status == CreditStatus.active.value and _naive(credit.expires_at) <= expiry_window:
+            events.append({
+                "id": f"credit_expiring-{credit.id}",
+                "kind": "credit_expiring",
+                "text": f"Your ${credit.amount} reward at {practice.name} expires soon.",
+                "timestamp": credit.expires_at,
+                "session_id": credit.session_id,
+            })
+
+    events.sort(key=lambda e: _naive(e["timestamp"]) or now_naive, reverse=True)
+    total = len(events)
+    items = events[:50]
+
+    for item in items:
+        item["timestamp"] = item["timestamp"].isoformat()
+
+    return success_response({"items": items, "total": total})
