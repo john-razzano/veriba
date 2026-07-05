@@ -1,6 +1,7 @@
+import logging
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,11 @@ from app.core.security import utcnow
 from app.db.session import get_db
 from app.models import Practice, Session as PhotoSession, SessionStatus
 from app.schemas.practice import PracticeUpdateRequest
+from app.services.images import compress_for_web, read_upload_bytes
 from app.services.serializers import serialize_practice
+from app.services.storage import get_storage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/practices", tags=["practices"])
 
@@ -26,7 +31,14 @@ def update_practice(
     practice: Practice = Depends(get_current_practice),
     db: Session = Depends(get_db),
 ):
-    for field in ("name", "location", "website", "lat", "lng", "credit_expiration_days", "auto_publish"):
+    if payload.name is not None and payload.name != practice.name:
+        logger.info("Practice %s renamed: %r → %r", practice.id, practice.name, payload.name)
+        practice.name = payload.name
+    if payload.location is not None and payload.location != practice.location:
+        logger.info("Practice %s location changed: %r → %r", practice.id, practice.location, payload.location)
+        practice.location = payload.location
+
+    for field in ("website", "lat", "lng", "credit_expiration_days", "auto_publish"):
         value = getattr(payload, field)
         if value is not None:
             setattr(practice, field, value)
@@ -39,10 +51,45 @@ def update_practice(
         if payload.default_discounts.full_blur is not None:
             practice.default_discount_blur = payload.default_discounts.full_blur
 
+    # bio and booking_url are explicitly nullable — only update when provided
+    if "bio" in payload.model_fields_set:
+        practice.bio = payload.bio or None
+    if "booking_url" in payload.model_fields_set:
+        practice.booking_url = payload.booking_url
+
     db.add(practice)
     db.commit()
     db.refresh(practice)
     return success_response(serialize_practice(practice))
+
+
+@router.post("/me/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    practice: Practice = Depends(get_current_practice),
+    db: Session = Depends(get_db),
+):
+    data = await read_upload_bytes(file)
+    compressed, _, _ = compress_for_web(data)
+    key = f"{practice.id}/profile/avatar.jpg"
+    avatar_url = get_storage().save_bytes(key, compressed, content_type="image/jpeg")
+    practice.avatar_key = key
+    db.add(practice)
+    db.commit()
+    return success_response({"avatar_url": avatar_url})
+
+
+@router.delete("/me/avatar")
+def delete_avatar(
+    practice: Practice = Depends(get_current_practice),
+    db: Session = Depends(get_db),
+):
+    if practice.avatar_key:
+        get_storage().delete_prefix(practice.avatar_key)
+        practice.avatar_key = None
+        db.add(practice)
+        db.commit()
+    return success_response({"removed": practice.avatar_key is None})
 
 
 @router.get("/me/stats")
@@ -107,4 +154,3 @@ def practice_stats(
             "seo_impressions_this_week": 0,
         }
     )
-

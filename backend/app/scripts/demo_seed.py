@@ -16,6 +16,7 @@ from app.models import (
     ConsentTier,
     Credit,
     CreditStatus,
+    Followup,
     FollowedPractice,
     ObscureMode,
     Practice,
@@ -91,6 +92,9 @@ class DemoPracticeSpec:
     owner_email: str
     theme: DemoTheme
     sessions: tuple[DemoSessionSpec, ...] = field(default_factory=tuple)
+    bio: str | None = None
+    booking_url: str | None = None
+    generate_avatar: bool = False
 
 
 DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
@@ -275,6 +279,12 @@ DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
         website="https://atelier.veriba.studio",
         owner_name="Elena Marsh",
         owner_email="owner+atelier@veriba-demo.studio",
+        bio=(
+            "Editorial-grade aesthetics in Newport Beach. Every result on this page is "
+            "captured, consented, and hash-verified with Veriba."
+        ),
+        booking_url="https://atelier.veriba.studio/book",
+        generate_avatar=True,
         theme=DemoTheme(
             top=(240, 235, 228),
             bottom=(201, 187, 168),
@@ -454,6 +464,9 @@ def delete_synthetic_records(db: OrmSession, *, slug: str | None = None) -> dict
     sessions = db.scalars(select(Session).where(Session.practice_id.in_(practice_ids))).all()
     session_ids = [session.id for session in sessions]
     credits = db.scalars(select(Credit).where(Credit.practice_id.in_(practice_ids))).all()
+    followups = (
+        db.scalars(select(Followup).where(Followup.session_id.in_(session_ids))).all() if session_ids else []
+    )
     refresh_tokens = (
         db.scalars(select(RefreshToken).where(RefreshToken.user_id.in_(user_ids))).all() if user_ids else []
     )
@@ -477,6 +490,8 @@ def delete_synthetic_records(db: OrmSession, *, slug: str | None = None) -> dict
         db.delete(item)
     for credit in credits:
         db.delete(credit)
+    for followup in followups:
+        db.delete(followup)
     for token in refresh_tokens:
         db.delete(token)
     for session in sessions:
@@ -513,6 +528,19 @@ def _load_font(size: int):
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+def _make_avatar_image(spec: DemoPracticeSpec, size: int = 400) -> bytes:
+    img = Image.new("RGB", (size, size), color=spec.theme.accent)
+    draw = ImageDraw.Draw(img)
+    initials = derive_initials(spec.name)
+    font = _load_font(size // 3)
+    bbox = draw.textbbox((0, 0), initials, font=font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(((size - w) // 2 - bbox[0], (size - h) // 2 - bbox[1]), initials, fill=(255, 255, 255), font=font)
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
 
 
 def _gradient_canvas(width: int, height: int, top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Image:
@@ -809,6 +837,19 @@ def seed_demo_dataset(*, reset_first: bool = False) -> dict:
             db.flush()
 
             practice.owner_id = user.id
+
+            if spec.bio:
+                practice.bio = spec.bio
+            if spec.booking_url:
+                practice.booking_url = spec.booking_url
+            if spec.generate_avatar:
+                from app.services.images import compress_for_web
+                avatar_data = _make_avatar_image(spec)
+                compressed, _, _ = compress_for_web(avatar_data)
+                key = f"{practice.id}/profile/avatar.jpg"
+                get_storage().save_bytes(key, compressed)
+                practice.avatar_key = key
+
             created_practices += 1
 
             for session_index, session_spec in enumerate(spec.sessions, start=1):

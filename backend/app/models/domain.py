@@ -92,6 +92,9 @@ class Practice(Base, TimestampMixin):
     default_discount_blur: Mapped[int] = mapped_column(Integer, default=25)
     credit_expiration_days: Mapped[int] = mapped_column(Integer, default=180)
     auto_publish: Mapped[bool] = mapped_column(Boolean, default=False)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avatar_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    booking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     owner_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], post_update=True)

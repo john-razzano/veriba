@@ -48,6 +48,9 @@ def serialize_practice(practice: Practice) -> dict:
         },
         "credit_expiration_days": practice.credit_expiration_days,
         "auto_publish": practice.auto_publish,
+        "bio": practice.bio,
+        "avatar_url": _image_url(practice.avatar_key),
+        "booking_url": practice.booking_url,
         "owner_id": practice.owner_id,
         "created_at": _iso(practice.created_at),
         "updated_at": _iso(practice.updated_at),
@@ -307,6 +310,9 @@ def serialize_public_practice(
             if featured_session
             else None
         ),
+        "bio": practice.bio,
+        "avatar_url": _image_url(practice.avatar_key),
+        "booking_url": practice.booking_url,
     }
 
 
@@ -324,6 +330,8 @@ def serialize_public_session_card(
             "location": practice.location,
             "widget_slug": practice.widget_slug,
             "website": practice.website,
+            "booking_url": practice.booking_url,
+            "avatar_url": _image_url(practice.avatar_key),
         },
         "provider": {
             "name": owner.name if owner is not None else practice.name,
