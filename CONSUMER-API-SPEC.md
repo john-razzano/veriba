@@ -111,3 +111,36 @@ search box to this. Nothing to build; do not duplicate it.
 - Manual check with the seeded data: create a followup from the Veriba Atelier provider
   account for patient email `member@veriba.app`, then `GET /api/me/approvals` as that
   member shows it, and responding `full_blur` completes the loop.
+
+---
+
+## 6. Activity feed (added July 4) — `GET /api/me/activity`
+
+Powers the Inbox "Earlier" section. **No new tables** — derive events from existing
+data for the authenticated user (matched by `lower(patient_email)` on followups and
+credits, same as approvals/results):
+
+```
+{ "items": [
+    { "id": "<kind>-<row id>",            # stable
+      "kind": "approval_completed" | "case_published" | "credit_earned" | "credit_expiring",
+      "text": "<human sentence>",
+      "timestamp": iso,                    # sort key, newest first
+      "session_id": str | null }
+  ], "total": n }
+```
+
+Sources (limit 50 after merge-sort desc by timestamp):
+- **approval_completed** — completed followups: "You approved {practice}'s request to
+  publish your {treatment}." ts = session.consent_at (fallback followup.updated_at).
+- **case_published** — published sessions linked via the member's followups:
+  "{practice} published your {treatment} before & after." ts = published_at.
+  Include session_id so the app can link to /case/{id}.
+- **credit_earned** — credits with matching patient_email: "You earned a ${amount}
+  reward at {practice}." ts = earned_at.
+- **credit_expiring** — active credits expiring within 21 days: "Your ${amount}
+  reward at {practice} expires soon." ts = expires_at (these may sort into the
+  future — cap displayed ts at now, or just let the client render them first).
+
+Tests: member with a completed followup + credit sees the derived items; another
+user's rows never leak; empty case returns `{"items": [], "total": 0}`.
