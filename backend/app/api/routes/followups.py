@@ -4,12 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+import logging
+
 from app.api.deps import get_current_practice
 from app.core.config import get_settings
 from app.core.responses import success_response
 from app.core.security import create_upload_token, utcnow
 from app.db.session import get_db
 from app.models import Followup, FollowupStatus, Practice, Session as PhotoSession, User
+
+logger = logging.getLogger(__name__)
 from app.schemas.followup import FollowupCreateRequest
 from app.services.email import followup_email_subject, render_followup_email, send_email
 from app.services.logic import ensure_followup_belongs_to_session, ensure_session_belongs_to_practice, followup_send_at
@@ -48,6 +52,10 @@ def _send_followup_email(followup: Followup, practice: Practice, session: PhotoS
                     User.role == "member",
                 )
             )
+            logger.info(
+                "push hook: followup=%s email=%s member_found=%s",
+                followup.id, followup.patient_email, member.id if member else None,
+            )
             if member:
                 from app.tasks.jobs import send_push_notification
                 send_push_notification.delay(
@@ -56,9 +64,10 @@ def _send_followup_email(followup: Followup, practice: Practice, session: PhotoS
                     "Open the app to review and approve your case.",
                     {"followup_id": followup.id},
                 )
+        else:
+            logger.info("push hook: skipped for followup=%s (no db)", followup.id)
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Push notification failed for followup %s", followup.id)
+        logger.exception("Push notification failed for followup %s", followup.id)
 
 
 @router.post("/{session_id}/followup")
@@ -129,7 +138,7 @@ def resend_followup(
     followup.opened_at = None
     followup.upload_completed_at = None
     followup.status = FollowupStatus.scheduled.value
-    _send_followup_email(followup, practice, session)
+    _send_followup_email(followup, practice, session, db=db)
     db.add(followup)
     db.commit()
     db.refresh(followup)

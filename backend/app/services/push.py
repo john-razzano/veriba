@@ -21,12 +21,16 @@ CHUNK_SIZE = 100
 def send_push(user_ids: list[str], title: str, body: str, data: dict | None = None) -> None:
     """Send push notifications to all tokens registered for the given user IDs."""
     if not user_ids:
+        logger.info("send_push: no user_ids, skipping")
         return
 
     with SessionLocal() as db:
         tokens = db.scalars(
             select(PushToken).where(PushToken.user_id.in_(user_ids))
         ).all()
+
+        logger.info("send_push: %d user(s) → %d token(s) found", len(user_ids), len(tokens))
+
         if not tokens:
             return
 
@@ -42,14 +46,20 @@ def send_push(user_ids: list[str], title: str, body: str, data: dict | None = No
             try:
                 resp = httpx.post(EXPO_PUSH_URL, json=chunk, timeout=10)
                 resp.raise_for_status()
-                for j, result in enumerate(resp.json().get("data", [])):
+                result_data = resp.json().get("data", [])
+                logger.info(
+                    "send_push: Expo responded %s — %s",
+                    resp.status_code,
+                    result_data,
+                )
+                for j, result in enumerate(result_data):
                     if (
                         result.get("status") == "error"
                         and result.get("details", {}).get("error") == "DeviceNotRegistered"
                     ):
                         stale.append(chunk[j]["to"])
             except Exception as exc:
-                logger.error("Push chunk %d failed: %s", i // CHUNK_SIZE, exc)
+                logger.error("send_push: chunk %d failed: %s", i // CHUNK_SIZE, exc)
 
         if stale:
             for raw_token in stale:
@@ -57,4 +67,4 @@ def send_push(user_ids: list[str], title: str, body: str, data: dict | None = No
                 if pt:
                     db.delete(pt)
             db.commit()
-            logger.info("Removed %d stale push tokens", len(stale))
+            logger.info("send_push: removed %d stale tokens", len(stale))
