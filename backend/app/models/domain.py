@@ -98,6 +98,7 @@ class Practice(Base, TimestampMixin):
     booking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     featured_session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id"), nullable=True)
     services: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    hours: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     owner_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], post_update=True)
@@ -282,3 +283,43 @@ class FollowedPractice(Base, TimestampMixin):
 
     user: Mapped["User"] = relationship()
     practice: Mapped["Practice"] = relationship()
+
+
+class ConsultRequest(Base, TimestampMixin):
+    __tablename__ = "consult_requests"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    practice_id: Mapped[str] = mapped_column(ForeignKey("practices.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id"), nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="new")
+    handled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SessionPhoto(Base, TimestampMixin):
+    __tablename__ = "session_photos"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), index=True)
+    image_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    blurhash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class PushToken(Base, TimestampMixin):
+    __tablename__ = "push_tokens"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    platform: Mapped[str] = mapped_column(String(10), nullable=False)

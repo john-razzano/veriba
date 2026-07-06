@@ -1,6 +1,7 @@
 from app.models.domain import (
     Base,
     ConsentTier,
+    ConsultRequest,
     Credit,
     CreditStatus,
     Followup,
@@ -8,11 +9,13 @@ from app.models.domain import (
     FollowupStatus,
     ObscureMode,
     Practice,
+    PushToken,
     RefreshToken,
     Role,
     SavedCase,
     Session,
     SessionCategory,
+    SessionPhoto,
     SessionStatus,
     User,
 )
@@ -20,6 +23,7 @@ from app.models.domain import (
 __all__ = [
     "Base",
     "ConsentTier",
+    "ConsultRequest",
     "Credit",
     "CreditStatus",
     "Followup",
@@ -27,11 +31,13 @@ __all__ = [
     "FollowupStatus",
     "ObscureMode",
     "Practice",
+    "PushToken",
     "RefreshToken",
     "Role",
     "SavedCase",
     "Session",
     "SessionCategory",
+    "SessionPhoto",
     "SessionStatus",
     "User",
 ]
