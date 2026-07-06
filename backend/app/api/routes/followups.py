@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.responses import success_response
 from app.core.security import create_upload_token, utcnow
 from app.db.session import get_db
-from app.models import Followup, FollowupStatus, Practice, Session as PhotoSession, User
+from app.models import Followup, FollowupStatus, Practice, Role, Session as PhotoSession, User
 
 logger = logging.getLogger(__name__)
 from app.schemas.followup import FollowupCreateRequest
@@ -43,29 +43,11 @@ def _send_followup_email(followup: Followup, practice: Practice, session: PhotoS
     followup.status = FollowupStatus.sent.value
     followup.sent_at = utcnow()
 
-    # Push notification — log-and-continue if anything fails
+    # Push notification at send-time — log-and-continue on any failure
     try:
         if db is not None:
-            member = db.scalar(
-                select(User).where(
-                    User.email == followup.patient_email.lower(),
-                    User.role == "member",
-                )
-            )
-            logger.info(
-                "push hook: followup=%s email=%s member_found=%s",
-                followup.id, followup.patient_email, member.id if member else None,
-            )
-            if member:
-                from app.tasks.jobs import send_push_notification
-                send_push_notification.delay(
-                    [member.id],
-                    f"{practice.name} shared your results for review",
-                    "Open the app to review and approve your case.",
-                    {"followup_id": followup.id},
-                )
-        else:
-            logger.info("push hook: skipped for followup=%s (no db)", followup.id)
+            from app.services.push import send_followup_push
+            send_followup_push(followup, session, practice.name, db)
     except Exception:
         logger.exception("Push notification failed for followup %s", followup.id)
 
@@ -77,12 +59,23 @@ def create_followup(
     practice: Practice = Depends(get_current_practice),
     db: Session = Depends(get_db),
 ):
+    from fastapi import HTTPException as _HTTPException
     session = ensure_session_belongs_to_practice(db, session_id, practice.id)
+
+    # Validate patient_user_id when provided
+    patient_user_id = None
+    if payload.patient_user_id:
+        linked_user = db.get(User, payload.patient_user_id)
+        if linked_user is None or linked_user.role != Role.member.value:
+            raise _HTTPException(status_code=422, detail="patient_user_id must refer to an existing member account")
+        patient_user_id = payload.patient_user_id
+
     scheduled_for = followup_send_at(session, payload.send_at)
     followup = Followup(
         session_id=session.id,
         practice_id=practice.id,
         patient_email=payload.patient_email.lower(),
+        patient_user_id=patient_user_id,
         patient_first_name=payload.patient_first_name,
         upload_token=create_upload_token(),
         token_expires_at=utcnow() + timedelta(days=30),
@@ -96,7 +89,7 @@ def create_followup(
         _send_followup_email(followup, practice, session, db=db)
     db.commit()
     db.refresh(followup)
-    return success_response(serialize_followup(followup), status_code=201)
+    return success_response(serialize_followup(followup, db=db), status_code=201)
 
 
 @router.get("/{session_id}/followups")
@@ -114,7 +107,7 @@ def list_followups(
         )
         .order_by(Followup.created_at.desc())
     ).all()
-    return success_response({"followups": [serialize_followup(item) for item in followups]})
+    return success_response({"followups": [serialize_followup(item, db=db) for item in followups]})
 
 
 @router.post("/{session_id}/followup/{followup_id}/resend")
@@ -142,7 +135,7 @@ def resend_followup(
     db.add(followup)
     db.commit()
     db.refresh(followup)
-    return success_response(serialize_followup(followup))
+    return success_response(serialize_followup(followup, db=db))
 
 
 @router.delete("/{session_id}/followup/{followup_id}")

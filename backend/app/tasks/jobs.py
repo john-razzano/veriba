@@ -48,6 +48,14 @@ def dispatch_scheduled_followups():
             followup.status = FollowupStatus.sent.value
             followup.sent_at = utcnow()
             db.add(followup)
+
+            # Push at send-time — log-and-continue
+            try:
+                from app.services.push import send_followup_push
+                send_followup_push(followup, session, practice.name, db)
+            except Exception:
+                logger.exception("Push failed for scheduled followup %s", followup.id)
+
         db.commit()
     return True
 

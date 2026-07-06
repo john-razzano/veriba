@@ -8,9 +8,10 @@ import logging
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.models import PushToken
+from app.models import Followup, PushToken, Session as PhotoSession
 
 logger = logging.getLogger(__name__)
 
@@ -68,3 +69,33 @@ def send_push(user_ids: list[str], title: str, body: str, data: dict | None = No
                     db.delete(pt)
             db.commit()
             logger.info("send_push: removed %d stale tokens", len(stale))
+
+
+def send_followup_push(
+    followup: Followup,
+    session: PhotoSession,
+    practice_name: str,
+    db: Session,
+) -> None:
+    """Resolve the member for this followup and fire push with copy matched to session state."""
+    from app.models import SessionStatus
+    from app.services.logic import resolve_followup_member
+
+    member = resolve_followup_member(followup, db)
+    if not member:
+        return
+
+    if session.status == SessionStatus.pending_after.value:
+        title = practice_name
+        body = "Time to add your after photo — tap to upload."
+        kind = "after_upload"
+    else:
+        title = f"{practice_name} shared your results for review"
+        body = "Open the app to review and approve your case."
+        kind = "approval"
+
+    logger.info(
+        "send_followup_push: followup=%s member=%s kind=%s",
+        followup.id, member.id, kind,
+    )
+    send_push([member.id], title=title, body=body, data={"followup_id": followup.id, "kind": kind})

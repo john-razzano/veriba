@@ -9,6 +9,7 @@ from app.api.routes import (
     health,
     internal,
     me,
+    members,
     patient,
     practices,
     sessions,
@@ -30,3 +31,4 @@ api_router.include_router(health.router)
 api_router.include_router(internal.router)
 api_router.include_router(me.router)
 api_router.include_router(consults.router)
+api_router.include_router(members.router)

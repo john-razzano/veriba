@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -208,7 +208,15 @@ def list_results(
     """
     followups = db.scalars(
         select(Followup)
-        .where(func.lower(Followup.patient_email) == current_user.email.lower())
+        .where(
+            or_(
+                Followup.patient_user_id == current_user.id,
+                and_(
+                    Followup.patient_user_id.is_(None),
+                    func.lower(Followup.patient_email) == current_user.email.lower(),
+                ),
+            )
+        )
         .order_by(Followup.created_at.desc())
     ).all()
 
@@ -242,7 +250,13 @@ def list_approvals(
     followups = db.scalars(
         select(Followup)
         .where(
-            func.lower(Followup.patient_email) == current_user.email.lower(),
+            or_(
+                Followup.patient_user_id == current_user.id,
+                and_(
+                    Followup.patient_user_id.is_(None),
+                    func.lower(Followup.patient_email) == current_user.email.lower(),
+                ),
+            ),
             Followup.status.in_(actionable),
         )
         .order_by(Followup.created_at.desc())
@@ -430,7 +444,15 @@ def list_activity(
     expiry_window = now_naive + timedelta(days=21)
 
     followups = db.scalars(
-        select(Followup).where(func.lower(Followup.patient_email) == email_lower)
+        select(Followup).where(
+            or_(
+                Followup.patient_user_id == current_user.id,
+                and_(
+                    Followup.patient_user_id.is_(None),
+                    func.lower(Followup.patient_email) == email_lower,
+                ),
+            )
+        )
     ).all()
 
     credits = db.scalars(

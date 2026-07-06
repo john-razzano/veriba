@@ -16,6 +16,7 @@ from app.models import (
     ObscureMode,
     Practice,
     RefreshToken,
+    Role,
     Session as PhotoSession,
     SessionCategory,
     SessionStatus,
@@ -250,6 +251,24 @@ def is_publishable(session: PhotoSession) -> bool:
         and session.after_image_key
         and session.consent_tier
         and session.consent_tier != ConsentTier.decline.value
+    )
+
+
+def resolve_followup_member(followup: Followup, db: Session) -> User | None:
+    """Resolve the member user for a followup.
+
+    patient_user_id wins when set; otherwise case-insensitive email match
+    against member-role users. This single rule is used in push, approvals,
+    results, and the followup serializer.
+    """
+    if followup.patient_user_id:
+        user = db.get(User, followup.patient_user_id)
+        return user if user and user.role == Role.member.value else None
+    return db.scalar(
+        select(User).where(
+            func.lower(User.email) == followup.patient_email.lower(),
+            User.role == Role.member.value,
+        )
     )
 
 

@@ -212,6 +212,7 @@ class Followup(Base, TimestampMixin):
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), index=True)
     practice_id: Mapped[str] = mapped_column(ForeignKey("practices.id"), index=True)
     patient_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    patient_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     patient_first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     upload_token: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

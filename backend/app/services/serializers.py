@@ -187,13 +187,22 @@ def serialize_session_detail(session: Session, *, saves_count: int = 0, photos: 
     }
 
 
-def serialize_followup(followup: Followup) -> dict:
+def serialize_followup(followup: Followup, db=None) -> dict:
     settings = get_settings()
     upload_url = f"{settings.patient_portal_base_url.rstrip('/')}/{followup.upload_token}"
+
+    member_match = None
+    if db is not None:
+        from app.services.logic import resolve_followup_member
+        member = resolve_followup_member(followup, db)
+        if member:
+            member_match = {"id": member.id, "name": member.name, "initials": member.initials}
+
     return {
         "id": followup.id,
         "session_id": followup.session_id,
         "patient_email": followup.patient_email,
+        "patient_user_id": followup.patient_user_id,
         "patient_first_name": followup.patient_first_name,
         "send_at": _iso(followup.send_at),
         "status": followup.status,
@@ -204,6 +213,7 @@ def serialize_followup(followup: Followup) -> dict:
         "upload_completed_at": _iso(followup.upload_completed_at),
         "expires_at": _iso(followup.token_expires_at),
         "created_at": _iso(followup.created_at),
+        "member_match": member_match,
     }
 
 
