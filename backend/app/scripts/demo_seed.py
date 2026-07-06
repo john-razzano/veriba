@@ -98,6 +98,7 @@ class DemoPracticeSpec:
     booking_url: str | None = None
     hours: dict | None = None
     generate_avatar: bool = False
+    featured_treatment: str | None = None  # pin the first session matching this treatment
 
 
 DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
@@ -287,6 +288,7 @@ DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
             "captured, consented, and hash-verified with Veriba."
         ),
         booking_url="https://atelier.veriba.studio/book",
+        featured_treatment="Liquid Rhinoplasty",
         hours={
             "mon": "9:00–17:00", "tue": "9:00–17:00", "wed": "9:00–17:00",
             "thu": "9:00–17:00", "fri": "9:00–17:00",
@@ -923,6 +925,21 @@ def seed_demo_dataset(*, reset_first: bool = False) -> dict:
                     )
                     db.add(credit)
                     created_credits += 1
+
+            # Pin the featured session after all sessions for this practice are created
+            if spec.featured_treatment:
+                from sqlalchemy import select as _sel
+                featured = db.scalar(
+                    _sel(Session)
+                    .where(
+                        Session.practice_id == practice.id,
+                        Session.treatment == spec.featured_treatment,
+                        Session.status == SessionStatus.published.value,
+                    )
+                    .limit(1)
+                )
+                if featured:
+                    practice.featured_session_id = featured.id
 
         db.commit()
 

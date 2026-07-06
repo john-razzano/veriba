@@ -21,7 +21,7 @@ _SVG = "M10 35 Q30 10 50 30 T90 25"
 def _register_provider(client, email="prov@priv.com", slug="priv-clinic"):
     r = client.post("/api/auth/register", json={
         "email": email, "password": "secret123", "name": "Dr P",
-        "practice_name": "Priv Clinic", "practice_location": "LA, CA",
+        "practice_name": "Priv Clinic Demo", "practice_location": "LA, CA",
     })
     assert r.status_code == 201
     return r.json()["data"]["access_token"]

@@ -5,7 +5,7 @@ def test_register_login_and_profile(client):
             "email": "owner@example.com",
             "password": "supersecret",
             "name": "Jane Owner",
-            "practice_name": "Luxe Aesthetics",
+            "practice_name": "Luxe Aesthetics Demo",
             "practice_location": "Reno, NV",
             "practice_website": "luxeaesthetics.com",
         },
@@ -13,7 +13,7 @@ def test_register_login_and_profile(client):
     assert register_response.status_code == 201
     payload = register_response.json()["data"]
     assert payload["user"]["email"] == "owner@example.com"
-    assert payload["practice"]["widget_slug"] == "luxe-aesthetics"
+    assert payload["practice"]["widget_slug"] == "luxe-aesthetics-demo"
 
     login_response = client.post(
         "/api/auth/login",

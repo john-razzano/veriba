@@ -23,7 +23,7 @@ def _register_and_auth(client):
             "email": "doctor@example.com",
             "password": "supersecret",
             "name": "Dr Provider",
-            "practice_name": "Glow Clinic",
+            "practice_name": "Glow Clinic Demo",
             "practice_location": "Reno, NV",
             "practice_website": "glowclinic.com",
         },

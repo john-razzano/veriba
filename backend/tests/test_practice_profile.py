@@ -20,7 +20,7 @@ TINY_JPEG = base64.b64decode(
 def _register_provider(client, email="owner@profile.com"):
     r = client.post("/api/auth/register", json={
         "email": email, "password": "secret123", "name": "Dr Profile",
-        "practice_name": "Profile Clinic", "practice_location": "LA, CA",
+        "practice_name": "Profile Clinic Demo", "practice_location": "LA, CA",
     })
     assert r.status_code == 201
     return r.json()["data"]["access_token"], r.json()["data"]["practice"]["id"]

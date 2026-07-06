@@ -24,7 +24,7 @@ _SVG = "M10 35 Q30 10 50 30 T90 25"
 def _register_provider(client, email="grow_prov@test.com"):
     r = client.post("/api/auth/register", json={
         "email": email, "password": "secret123", "name": "Dr Grow",
-        "practice_name": "Grow Clinic", "practice_location": "LA, CA",
+        "practice_name": "Grow Clinic Demo", "practice_location": "LA, CA",
     })
     assert r.status_code == 201
     d = r.json()["data"]

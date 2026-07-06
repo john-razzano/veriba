@@ -24,7 +24,7 @@ def _register_provider(client, email="provider@test.com"):
         "email": email,
         "password": "secret123",
         "name": "Dr Provider",
-        "practice_name": "Test Clinic",
+        "practice_name": "Test Clinic Demo",
         "practice_location": "LA, CA",
     })
     assert r.status_code == 201
