@@ -180,3 +180,57 @@ The app's provider surfaces will show per-case saves alongside the existing
 - Session list/detail include `saves_count`; `/api/practices/me` includes
   `followers_count`; test with a member who saved a case.
 - Full suite green; report new test count + any deviations from this spec.
+
+---
+
+# §6 Member-linked followups (added July 6) — QR identity + push at send-time
+
+Two changes: followups can be bound to a member account directly (QR scan in
+the clinic) instead of relying on email string-matching, and the member push
+moves from followup *creation* to followup *send* so it respects the
+provider's delay. Email always still sends (once Resend exists).
+
+## Schema (migration 0007)
+
+- `followups.patient_user_id` — String(36) FK users.id, nullable, index.
+
+## Member resolution (one rule, used everywhere)
+
+`patient_user_id` wins when set; otherwise case-insensitive `patient_email`
+match against member-role users. Apply this single rule in:
+- the push sender's member lookup,
+- `GET /api/me/approvals` and `GET /api/me/results` (currently email-only —
+  a QR-bound followup with a different email on file must still reach the
+  member's app).
+
+## Endpoints
+
+- `POST /api/sessions/{id}/followup` accepts optional `patient_user_id`.
+  Validate it's an existing member-role user; 422 otherwise.
+- Followup serializer (incl. the create/list responses) gains
+  `member_match: {id, name, initials} | null`, resolved via the rule above —
+  works for pure email matches too. The app uses it to show
+  "✓ Veriba member — they'll get a notification".
+- `GET /api/members/lookup` (practice auth) — `?user_id=` or `?email=`
+  (exact match only, no search) → `{member: {id, name, initials} | null}`.
+  Return only name/initials — never the account email.
+
+## Push at send-time (fix)
+
+- Move the member push out of followup creation. Fire it wherever the
+  followup email actually sends: the `send_at` scheduling path (including
+  `sendImmediately`), resend, and reminders 1/2.
+- Copy by session state at send time:
+  - `pending_after` → title = practice name, body
+    "Time to add your after photo — tap to upload.",
+    data `{followup_id, kind: "after_upload"}`
+  - `pending_consent` / ready → existing "shared your results for review"
+    body, data `{followup_id, kind: "approval"}`
+
+## Tests
+
+- user_id match beats email match; QR-bound followup with mismatched email
+  still appears in that member's /api/me/approvals + /results.
+- lookup endpoint: practice-auth only, exact match, no email leakage.
+- Push fires at send time not create time; reminder sends push again;
+  respects send_at delay. Full suite green; report migration number + count.
