@@ -35,6 +35,7 @@ class PracticeUpdateRequest(BaseModel):
     booking_url: str | None = None
     featured_session_id: str | None = None
     services: list[str] | None = None
+    hours: dict | None = None
 
     @field_validator("website", "booking_url", mode="before")
     @classmethod

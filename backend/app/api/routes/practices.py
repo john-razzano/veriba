@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import get_current_practice
 from app.core.responses import success_response
 from app.core.security import utcnow
 from app.db.session import get_db
-from app.models import Practice, Session as PhotoSession, SessionStatus
+from app.models import FollowedPractice, Practice, Session as PhotoSession, SessionStatus
 from app.schemas.practice import PracticeUpdateRequest
 from app.services.images import compress_for_web, compute_blurhash, read_upload_bytes
 from app.services.serializers import serialize_practice
@@ -23,8 +23,13 @@ router = APIRouter(prefix="/practices", tags=["practices"])
 
 
 @router.get("/me")
-def get_practice(practice: Practice = Depends(get_current_practice)):
-    return success_response(serialize_practice(practice))
+def get_practice(practice: Practice = Depends(get_current_practice), db: Session = Depends(get_db)):
+    followers_count = db.scalar(
+        select(func.count(FollowedPractice.id)).where(FollowedPractice.practice_id == practice.id)
+    ) or 0
+    data = serialize_practice(practice)
+    data["followers_count"] = followers_count
+    return success_response(data)
 
 
 @router.patch("/me")
@@ -59,6 +64,8 @@ def update_practice(
         practice.booking_url = payload.booking_url
     if "services" in payload.model_fields_set:
         practice.services = payload.services
+    if "hours" in payload.model_fields_set:
+        practice.hours = payload.hours
     if "featured_session_id" in payload.model_fields_set:
         if payload.featured_session_id is None:
             practice.featured_session_id = None

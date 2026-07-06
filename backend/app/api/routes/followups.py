@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.responses import success_response
 from app.core.security import create_upload_token, utcnow
 from app.db.session import get_db
-from app.models import Followup, FollowupStatus, Practice, Session as PhotoSession
+from app.models import Followup, FollowupStatus, Practice, Session as PhotoSession, User
 from app.schemas.followup import FollowupCreateRequest
 from app.services.email import followup_email_subject, render_followup_email, send_email
 from app.services.logic import ensure_followup_belongs_to_session, ensure_session_belongs_to_practice, followup_send_at
@@ -23,7 +23,7 @@ def _followup_upload_url(token: str) -> str:
     return f"{settings.patient_portal_base_url.rstrip('/')}/{token}"
 
 
-def _send_followup_email(followup: Followup, practice: Practice, session: PhotoSession) -> None:
+def _send_followup_email(followup: Followup, practice: Practice, session: PhotoSession, db=None) -> None:
     html = render_followup_email(
         practice_name=practice.name,
         patient_first_name=followup.patient_first_name,
@@ -38,6 +38,27 @@ def _send_followup_email(followup: Followup, practice: Practice, session: PhotoS
     )
     followup.status = FollowupStatus.sent.value
     followup.sent_at = utcnow()
+
+    # Push notification — log-and-continue if anything fails
+    try:
+        if db is not None:
+            member = db.scalar(
+                select(User).where(
+                    User.email == followup.patient_email.lower(),
+                    User.role == "member",
+                )
+            )
+            if member:
+                from app.tasks.jobs import send_push_notification
+                send_push_notification.delay(
+                    [member.id],
+                    f"{practice.name} shared your results for review",
+                    "Open the app to review and approve your case.",
+                    {"followup_id": followup.id},
+                )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Push notification failed for followup %s", followup.id)
 
 
 @router.post("/{session_id}/followup")
@@ -63,7 +84,7 @@ def create_followup(
     db.add(followup)
     db.flush()
     if scheduled_for <= utcnow():
-        _send_followup_email(followup, practice, session)
+        _send_followup_email(followup, practice, session, db=db)
     db.commit()
     db.refresh(followup)
     return success_response(serialize_followup(followup), status_code=201)

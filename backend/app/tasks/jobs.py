@@ -1,13 +1,17 @@
+import logging
+
 from sqlalchemy import select
 
+from app.core.config import get_settings
+from app.core.security import utcnow
 from app.db.session import SessionLocal
 from app.models import Credit, CreditStatus, Followup, FollowupStatus, Practice, Session as PhotoSession
 from app.services.email import followup_email_subject, render_followup_email, send_email
 from app.services.logic import expire_followup_if_needed
 from app.services.serializers import serialize_followup
 from app.tasks.worker import celery_app
-from app.core.config import get_settings
-from app.core.security import utcnow
+
+logger = logging.getLogger(__name__)
 
 
 def _upload_url(token: str) -> str:
@@ -46,6 +50,15 @@ def dispatch_scheduled_followups():
             db.add(followup)
         db.commit()
     return True
+
+
+@celery_app.task(name="app.tasks.jobs.send_push_notification")
+def send_push_notification(user_ids: list[str], title: str, body: str, data: dict | None = None) -> None:
+    try:
+        from app.services.push import send_push
+        send_push(user_ids, title=title, body=body, data=data)
+    except Exception as exc:
+        logger.error("Push task failed: %s", exc)
 
 
 @celery_app.task(name="app.tasks.jobs.expire_records")
