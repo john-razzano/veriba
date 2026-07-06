@@ -3,7 +3,7 @@ from sqlalchemy import func, or_, select
 
 from app.core.responses import success_response
 from app.db.session import SessionLocal
-from app.models import Practice, Session as PhotoSession, SessionStatus, User
+from app.models import Practice, Session as PhotoSession, SessionPhoto, SessionStatus, User
 from app.services.serializers import (
     serialize_public_case_study,
     serialize_public_practice,
@@ -224,9 +224,21 @@ def get_public_session(session_id: str):
             )
         ) or 0
 
+        session_photo_rows = db.scalars(
+            select(SessionPhoto)
+            .where(SessionPhoto.session_id == session.id)
+            .order_by(SessionPhoto.sort_order, SessionPhoto.created_at)
+        ).all()
+        from app.services.storage import get_storage as _gs
+        _store = _gs()
+        case_photos = [
+            {"id": p.id, "url": _store.public_url(p.image_key), "blurhash": p.blurhash, "label": p.label}
+            for p in session_photo_rows
+        ]
+
         return success_response(
             {
-                "session": serialize_public_case_study(session, practice, owner=owner),
+                "session": serialize_public_case_study(session, practice, owner=owner, photos=case_photos),
                 "practice": serialize_public_practice(
                     practice,
                     owner=owner,

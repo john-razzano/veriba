@@ -25,6 +25,7 @@ from app.models import (
     SavedCase,
     Session,
     SessionCategory,
+    SessionPhoto,
     SessionStatus,
     User,
 )
@@ -80,6 +81,7 @@ class DemoSessionSpec:
     # loaded instead of generating illustrative placeholder art.
     before_asset: str | None = None
     after_asset: str | None = None
+    mid_asset: str | None = None  # extra angle/stage → seeded as SessionPhoto
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,7 @@ class DemoPracticeSpec:
     sessions: tuple[DemoSessionSpec, ...] = field(default_factory=tuple)
     bio: str | None = None
     booking_url: str | None = None
+    hours: dict | None = None
     generate_avatar: bool = False
 
 
@@ -284,6 +287,11 @@ DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
             "captured, consented, and hash-verified with Veriba."
         ),
         booking_url="https://atelier.veriba.studio/book",
+        hours={
+            "mon": "9:00–17:00", "tue": "9:00–17:00", "wed": "9:00–17:00",
+            "thu": "9:00–17:00", "fri": "9:00–17:00",
+            "sat": "10:00–14:00", "sun": None,
+        },
         generate_avatar=True,
         theme=DemoTheme(
             top=(240, 235, 228),
@@ -388,13 +396,15 @@ DEMO_PRACTICES: tuple[DemoPracticeSpec, ...] = (
                 published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
                 treatment_details="Progressive lip filler documented across the treatment arc.",
                 page_views=126, tagline="A documented progression",
-                before_asset="woodbury-lip-fillers_before.jpg", after_asset="woodbury-lip-fillers_after.jpg"),
+                before_asset="woodbury-lip-fillers_before.jpg", after_asset="woodbury-lip-fillers_after.jpg",
+                mid_asset="woodbury-lip-fillers_mid.jpg"),
             DemoSessionSpec(
                 patient_initials="WV", treatment="Lip Filler", category=SessionCategory.fillers.value,
                 published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
                 treatment_details="Volume-focused lip filler shown in matched profile views.",
                 page_views=131, tagline="Volume, profile-matched",
-                before_asset="woodbury-lip-volume_before.jpg", after_asset="woodbury-lip-volume_after.jpg"),
+                before_asset="woodbury-lip-volume_before.jpg", after_asset="woodbury-lip-volume_after.jpg",
+                mid_asset="woodbury-lip-volume_mid.jpg"),
             DemoSessionSpec(
                 patient_initials="PT", treatment="PDO Thread Lift", category=SessionCategory.other.value,
                 published=True, consent_tier=ConsentTier.full.value, obscure_mode=ObscureMode.none.value,
@@ -473,6 +483,9 @@ def delete_synthetic_records(db: OrmSession, *, slug: str | None = None) -> dict
     saved_cases = (
         db.scalars(select(SavedCase).where(SavedCase.session_id.in_(session_ids))).all() if session_ids else []
     )
+    session_photos = (
+        db.scalars(select(SessionPhoto).where(SessionPhoto.session_id.in_(session_ids))).all() if session_ids else []
+    )
     followed_practices = (
         db.scalars(select(FollowedPractice).where(FollowedPractice.practice_id.in_(practice_ids))).all()
     )
@@ -482,9 +495,11 @@ def delete_synthetic_records(db: OrmSession, *, slug: str | None = None) -> dict
     for practice_id in practice_ids:
         storage_objects += storage.delete_prefix(practice_id)
 
-    db.execute(update(Practice).where(Practice.id.in_(practice_ids)).values(owner_id=None))
+    db.execute(update(Practice).where(Practice.id.in_(practice_ids)).values(owner_id=None, featured_session_id=None))
 
     for item in followed_practices:
+        db.delete(item)
+    for item in session_photos:
         db.delete(item)
     for item in saved_cases:
         db.delete(item)
@@ -795,6 +810,25 @@ def _seed_session(
         session.published_at = published_at
         session.published_destinations = ["widget", "gallery"]
         session.publish_hash = build_publish_hash(session, published_at)
+
+        if session_spec.mid_asset:
+            mid_bytes = (SEED_ASSETS_DIR / session_spec.mid_asset).read_bytes()
+            mid_compressed, _, _ = compress_for_web(mid_bytes)
+            import uuid as _uuid_mod
+            photo_id = str(_uuid_mod.uuid4())
+            mid_key = f"{session.practice_id}/sessions/{session.id}/photos/{photo_id}.jpg"
+            get_storage().save_bytes(mid_key, mid_compressed)
+            from app.services.images import compute_blurhash as _cbh
+            mid_bh = _cbh(mid_compressed)
+            photo = SessionPhoto(
+                id=photo_id,
+                session_id=session.id,
+                image_key=mid_key,
+                blurhash=mid_bh,
+                label="In progress",
+                sort_order=0,
+            )
+            db.add(photo)
     else:
         session.after_capture_hash = None
 
@@ -842,6 +876,8 @@ def seed_demo_dataset(*, reset_first: bool = False) -> dict:
                 practice.bio = spec.bio
             if spec.booking_url:
                 practice.booking_url = spec.booking_url
+            if spec.hours:
+                practice.hours = spec.hours
             if spec.generate_avatar:
                 from app.services.images import compress_for_web
                 avatar_data = _make_avatar_image(spec)

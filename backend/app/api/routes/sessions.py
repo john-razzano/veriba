@@ -2,18 +2,22 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_practice
 from app.core.responses import success_response
 from app.core.security import utcnow
 from app.db.session import get_db
+import uuid as _uuid
+
 from app.models import (
     ConsentTier,
     ObscureMode,
     Practice,
+    SavedCase,
     Session as PhotoSession,
+    SessionPhoto,
     SessionStatus,
 )
 from app.schemas.session import ConsentRequest, PublishRequest, SessionCreateRequest, SessionUpdateRequest
@@ -33,6 +37,32 @@ from app.services.serializers import serialize_seo, serialize_session_detail, se
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+def _session_photos_list(db: Session, session_id: str) -> list[dict]:
+    photos = db.scalars(
+        select(SessionPhoto)
+        .where(SessionPhoto.session_id == session_id)
+        .order_by(SessionPhoto.sort_order, SessionPhoto.created_at)
+    ).all()
+    return [
+        {"id": p.id, "url": get_storage().public_url(p.image_key), "blurhash": p.blurhash, "label": p.label}
+        for p in photos
+    ]
+
+
+def _saves_count(db: Session, session_id: str) -> int:
+    return db.scalar(
+        select(func.count(SavedCase.id)).where(SavedCase.session_id == session_id)
+    ) or 0
+
+
+def _serialize_detail(db: Session, session: PhotoSession) -> dict:
+    return serialize_session_detail(
+        session,
+        saves_count=_saves_count(db, session.id),
+        photos=_session_photos_list(db, session.id),
+    )
 
 
 def _apply_seo(db: Session, session: PhotoSession, practice: Practice) -> dict:
@@ -103,9 +133,20 @@ def list_sessions(
     ordering = asc(sort_column) if order == "asc" else desc(sort_column)
     sessions = db.scalars(query.order_by(ordering).offset(offset).limit(limit)).all()
 
+    # saves_count — single grouped query, no N+1
+    saves_map: dict[str, int] = {}
+    if sessions:
+        sids = [s.id for s in sessions]
+        for row in db.execute(
+            select(SavedCase.session_id, func.count(SavedCase.id).label("cnt"))
+            .where(SavedCase.session_id.in_(sids))
+            .group_by(SavedCase.session_id)
+        ).all():
+            saves_map[row.session_id] = row.cnt
+
     return success_response(
         {
-            "sessions": [serialize_session_summary(session) for session in sessions],
+            "sessions": [{**serialize_session_summary(s), "saves_count": saves_map.get(s.id, 0)} for s in sessions],
             "total": total,
             "limit": limit,
             "offset": offset,
@@ -136,7 +177,7 @@ def create_session(
     db.add(session)
     db.commit()
     db.refresh(session)
-    return success_response(serialize_session_detail(session), status_code=201)
+    return success_response(_serialize_detail(db, session), status_code=201)
 
 
 @router.post("/{session_id}/images/{image_kind}")
@@ -348,7 +389,7 @@ def decline_consent(
     db.add(session)
     db.commit()
     db.refresh(session)
-    return success_response(serialize_session_detail(session))
+    return success_response(_serialize_detail(db, session))
 
 
 @router.post("/{session_id}/publish")
@@ -390,7 +431,7 @@ def unpublish_session(
     db.add(session)
     db.commit()
     db.refresh(session)
-    return success_response(serialize_session_detail(session))
+    return success_response(_serialize_detail(db, session))
 
 
 @router.get("/{session_id}/seo")
@@ -426,7 +467,7 @@ def get_session(
     db: Session = Depends(get_db),
 ):
     session = ensure_session_belongs_to_practice(db, session_id, practice.id)
-    return success_response(serialize_session_detail(session))
+    return success_response(_serialize_detail(db, session))
 
 
 @router.patch("/{session_id}")
@@ -458,7 +499,7 @@ def update_session(
     db.add(session)
     db.commit()
     db.refresh(session)
-    return success_response(serialize_session_detail(session))
+    return success_response(_serialize_detail(db, session))
 
 
 @router.delete("/{session_id}")
@@ -472,3 +513,57 @@ def delete_session(
     db.add(session)
     db.commit()
     return success_response({"archived": True})
+
+
+@router.post("/{session_id}/photos")
+async def upload_session_photo(
+    session_id: str,
+    file: UploadFile = File(...),
+    label: str | None = Form(default=None),
+    sort_order: int = Form(default=0),
+    practice: Practice = Depends(get_current_practice),
+    db: Session = Depends(get_db),
+):
+    ensure_session_belongs_to_practice(db, session_id, practice.id)
+    data = await read_upload_bytes(file)
+    compressed, _, _ = compress_for_web(data)
+    photo_id = str(_uuid.uuid4())
+    key = f"{practice.id}/sessions/{session_id}/photos/{photo_id}.jpg"
+    get_storage().save_bytes(key, compressed, content_type="image/jpeg")
+    bh = compute_blurhash(compressed)
+    photo = SessionPhoto(
+        id=photo_id,
+        session_id=session_id,
+        image_key=key,
+        blurhash=bh,
+        label=label,
+        sort_order=sort_order,
+    )
+    db.add(photo)
+    db.commit()
+    return success_response(
+        {"id": photo.id, "url": get_storage().public_url(key), "blurhash": bh, "label": label},
+        status_code=201,
+    )
+
+
+@router.delete("/{session_id}/photos/{photo_id}")
+def delete_session_photo(
+    session_id: str,
+    photo_id: str,
+    practice: Practice = Depends(get_current_practice),
+    db: Session = Depends(get_db),
+):
+    ensure_session_belongs_to_practice(db, session_id, practice.id)
+    photo = db.scalar(
+        select(SessionPhoto).where(
+            SessionPhoto.id == photo_id,
+            SessionPhoto.session_id == session_id,
+        )
+    )
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    get_storage().delete_prefix(photo.image_key)
+    db.delete(photo)
+    db.commit()
+    return success_response({"removed": True})
