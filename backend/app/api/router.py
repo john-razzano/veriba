@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     auth,
+    consults,
     credits,
     followups,
     gallery,
@@ -28,3 +29,4 @@ api_router.include_router(widget.router)
 api_router.include_router(health.router)
 api_router.include_router(internal.router)
 api_router.include_router(me.router)
+api_router.include_router(consults.router)

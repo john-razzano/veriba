@@ -3,6 +3,7 @@ from datetime import UTC
 from app.core.config import get_settings
 from app.models import (
     ConsentTier,
+    ConsultRequest,
     Credit,
     Followup,
     ObscureMode,
@@ -54,6 +55,7 @@ def serialize_practice(practice: Practice) -> dict:
         "booking_url": practice.booking_url,
         "featured_session_id": practice.featured_session_id,
         "services": practice.services,
+        "hours": practice.hours,
         "owner_id": practice.owner_id,
         "created_at": _iso(practice.created_at),
         "updated_at": _iso(practice.updated_at),
@@ -172,7 +174,7 @@ def serialize_session_summary(session: Session) -> dict:
     }
 
 
-def serialize_session_detail(session: Session) -> dict:
+def serialize_session_detail(session: Session, *, saves_count: int = 0, photos: list | None = None) -> dict:
     return {
         **serialize_session_summary(session),
         "chain_of_custody": chain_of_custody(session),
@@ -180,6 +182,8 @@ def serialize_session_detail(session: Session) -> dict:
         "consent_at": _iso(session.consent_at),
         "discount_applied": session.discount_applied,
         "seo": serialize_seo(session),
+        "saves_count": saves_count,
+        "photos": photos if photos is not None else [],
     }
 
 
@@ -320,6 +324,7 @@ def serialize_public_practice(
         "avatar_blurhash": practice.avatar_blurhash,
         "booking_url": practice.booking_url,
         "services": practice.services,
+        "hours": practice.hours,
     }
 
 
@@ -347,11 +352,41 @@ def serialize_public_session_card(
     }
 
 
+def serialize_consult(consult: ConsultRequest, db) -> dict:
+    practice = db.get(Practice, consult.practice_id)
+    user = db.get(User, consult.user_id)
+    photo_session = db.get(Session, consult.session_id) if consult.session_id else None
+    return {
+        "id": consult.id,
+        "practice": {
+            "id": practice.id,
+            "name": practice.name,
+            "widget_slug": practice.widget_slug,
+        } if practice else None,
+        "member": {
+            "name": user.name,
+            "initials": user.initials,
+        } if user else None,
+        "session": {
+            "id": photo_session.id,
+            "treatment": photo_session.treatment,
+            "after_image_url": _image_url(photo_session.after_image_key),
+        } if photo_session else None,
+        "message": consult.message,
+        "contact_email": consult.contact_email,
+        "contact_phone": consult.contact_phone,
+        "status": consult.status,
+        "created_at": _iso(consult.created_at),
+        "handled_at": _iso(consult.handled_at),
+    }
+
+
 def serialize_public_case_study(
     session: Session,
     practice: Practice,
     *,
     owner: User | None = None,
+    photos: list | None = None,
 ) -> dict:
     return {
         **serialize_public_session_card(session, practice, owner=owner),
@@ -359,4 +394,5 @@ def serialize_public_case_study(
         "page_views": session.page_views,
         "chain_of_custody": chain_of_custody(session),
         "seo": serialize_seo(session),
+        "photos": photos if photos is not None else [],
     }

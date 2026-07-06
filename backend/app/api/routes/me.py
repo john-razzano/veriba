@@ -10,21 +10,23 @@ from app.core.security import utcnow
 from app.db.session import get_db
 from app.models import (
     ConsentTier,
+    ConsultRequest,
     Credit,
     CreditStatus,
     Followup,
     FollowedPractice,
     FollowupStatus,
     Practice,
+    PushToken,
     SavedCase,
     Session as PhotoSession,
     SessionStatus,
     User,
 )
-from app.schemas.me import ApprovalRespondRequest
+from app.schemas.me import ApprovalRespondRequest, ConsultCreateRequest, PushTokenDeleteRequest, PushTokenRequest
 from app.services.consent import apply_consent
 from app.services.logic import query_total
-from app.services.serializers import _image_url, serialize_public_practice, serialize_public_session_card
+from app.services.serializers import _image_url, serialize_consult, serialize_public_practice, serialize_public_session_card
 
 router = APIRouter(prefix="/me", tags=["consumer"])
 
@@ -321,6 +323,93 @@ def respond_to_approval(
 
 
 # ---------------------------------------------------------------------------
+# Consult requests (member side)
+# ---------------------------------------------------------------------------
+
+@router.post("/consults")
+def create_consult(
+    payload: ConsultCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException
+    practice = db.get(Practice, payload.practice_id)
+    if practice is None:
+        raise HTTPException(status_code=404, detail="Practice not found")
+
+    existing = db.scalar(
+        select(ConsultRequest).where(
+            ConsultRequest.user_id == current_user.id,
+            ConsultRequest.practice_id == payload.practice_id,
+            ConsultRequest.status == "new",
+        )
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="You already have an open request with this clinic.")
+
+    consult = ConsultRequest(
+        practice_id=payload.practice_id,
+        user_id=current_user.id,
+        session_id=payload.session_id,
+        message=payload.message,
+        contact_email=payload.contact_email,
+        contact_phone=payload.contact_phone,
+        status="new",
+    )
+    db.add(consult)
+    db.commit()
+    db.refresh(consult)
+    return success_response(serialize_consult(consult, db), status_code=201)
+
+
+@router.get("/consults")
+def list_my_consults(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    consults = db.scalars(
+        select(ConsultRequest)
+        .where(ConsultRequest.user_id == current_user.id)
+        .order_by(ConsultRequest.created_at.desc())
+    ).all()
+    return success_response({"consults": [serialize_consult(c, db) for c in consults]})
+
+
+# ---------------------------------------------------------------------------
+# Push tokens
+# ---------------------------------------------------------------------------
+
+@router.post("/push-token")
+def upsert_push_token(
+    payload: PushTokenRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    existing = db.scalar(select(PushToken).where(PushToken.token == payload.token))
+    if existing:
+        existing.user_id = current_user.id
+        existing.platform = payload.platform
+        db.add(existing)
+    else:
+        db.add(PushToken(user_id=current_user.id, token=payload.token, platform=payload.platform))
+    db.commit()
+    return success_response({"stored": True})
+
+
+@router.delete("/push-token")
+def delete_push_token(
+    payload: PushTokenDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    existing = db.scalar(select(PushToken).where(PushToken.token == payload.token))
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return success_response({"removed": existing is not None})
+
+
+# ---------------------------------------------------------------------------
 # Activity feed (Inbox)
 # ---------------------------------------------------------------------------
 
@@ -346,6 +435,10 @@ def list_activity(
 
     credits = db.scalars(
         select(Credit).where(func.lower(Credit.patient_email) == email_lower)
+    ).all()
+
+    consult_rows = db.scalars(
+        select(ConsultRequest).where(ConsultRequest.user_id == current_user.id)
     ).all()
 
     # Cache practice lookups within this request
@@ -422,6 +515,18 @@ def list_activity(
                 "timestamp": credit.expires_at,
                 "session_id": credit.session_id,
             })
+
+    for consult in consult_rows:
+        practice = _practice(consult.practice_id)
+        if not practice:
+            continue
+        events.append({
+            "id": f"consult_request-{consult.id}",
+            "kind": "consult_request",
+            "text": f"You requested a consult with {practice.name}.",
+            "timestamp": consult.created_at,
+            "session_id": consult.session_id,
+        })
 
     events.sort(key=lambda e: _naive(e["timestamp"]) or now_naive, reverse=True)
     total = len(events)
