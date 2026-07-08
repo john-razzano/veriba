@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -399,15 +400,18 @@ def upsert_push_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Delete-then-insert: avoids ORM identity-map issues when re-pointing user_id
-    # across accounts (SELECT-then-UPDATE on a FK column can race or hit the
-    # unique constraint if the session flushes in the wrong order).
+    # Delete any prior owner, then insert fresh. If two requests race on the
+    # same token the second INSERT will hit the unique constraint — catch it and
+    # return success (whoever committed first owns it; that's fine).
     existing = db.scalar(select(PushToken).where(PushToken.token == payload.token))
     if existing:
         db.delete(existing)
         db.flush()
-    db.add(PushToken(user_id=current_user.id, token=payload.token, platform=payload.platform))
-    db.commit()
+    try:
+        db.add(PushToken(user_id=current_user.id, token=payload.token, platform=payload.platform))
+        db.commit()
+    except IntegrityError:
+        db.rollback()  # concurrent insert beat us; token is already stored
     return success_response({"stored": True})
 
 
