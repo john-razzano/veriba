@@ -247,16 +247,32 @@ def test_upsert_push_token(client):
 
 
 def test_push_token_upsert_moves_account(client):
-    """Same token re-registered by another user should update user_id."""
+    """Same device token registered by user A, then re-registered by user B.
+    Must succeed (not 409) and ownership must transfer to B."""
     token_a = _register_member(client, "push_ua@test.com")
     token_b = _register_member(client, "push_ub@test.com")
 
-    client.post("/api/me/push-token", headers={"Authorization": f"Bearer {token_a}"},
+    r1 = client.post("/api/me/push-token", headers={"Authorization": f"Bearer {token_a}"},
         json={"token": "ExpoToken[shared]", "platform": "android"})
-    # Re-register same Expo token with user B
-    r = client.post("/api/me/push-token", headers={"Authorization": f"Bearer {token_b}"},
+    assert r1.status_code == 200
+
+    # Same Expo token, different account — must NOT 409
+    r2 = client.post("/api/me/push-token", headers={"Authorization": f"Bearer {token_b}"},
         json={"token": "ExpoToken[shared]", "platform": "android"})
-    assert r.status_code == 200
+    assert r2.status_code == 200
+    assert r2.json()["data"]["stored"] is True
+
+    # Token is now owned by B: delete via B succeeds
+    d = client.request("DELETE", "/api/me/push-token",
+        headers={"Authorization": f"Bearer {token_b}"},
+        json={"token": "ExpoToken[shared]"})
+    assert d.json()["data"]["removed"] is True
+
+    # And no longer present for A
+    d2 = client.request("DELETE", "/api/me/push-token",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"token": "ExpoToken[shared]"})
+    assert d2.json()["data"]["removed"] is False
 
 
 def test_delete_push_token(client):
