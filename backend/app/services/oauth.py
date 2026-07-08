@@ -30,6 +30,16 @@ def _verify_token(
     valid_issuers: set[str],
 ) -> dict:
     """Verify an RS256 provider JWT and return decoded claims, or raise ValueError."""
+    # Log unverified claims for diagnostics (never shown to client)
+    try:
+        unverified = jwt.decode(id_token, options={"verify_signature": False})
+        logger.warning(
+            "oauth: token claims (unverified) aud=%r iss=%r | configured audience=%r",
+            unverified.get("aud"), unverified.get("iss"), audience,
+        )
+    except Exception as peek_exc:
+        logger.warning("oauth: could not peek token claims: %s", peek_exc)
+
     client = _client(jwks_url)
     try:
         signing_key = client.get_signing_key_from_jwt(id_token)
@@ -41,11 +51,14 @@ def _verify_token(
             options={"verify_iss": False},  # checked manually below
         )
     except PyJWTError as exc:
+        logger.warning("oauth: PyJWTError — %s: %s", type(exc).__name__, exc)
         raise ValueError(str(exc)) from exc
     except Exception as exc:
+        logger.warning("oauth: verification error — %s: %s", type(exc).__name__, exc)
         raise ValueError(f"Token verification error: {exc}") from exc
 
     if claims.get("iss") not in valid_issuers:
+        logger.warning("oauth: invalid issuer %r (expected one of %r)", claims.get("iss"), valid_issuers)
         raise ValueError(f"Invalid issuer: {claims.get('iss')!r}")
 
     logger.info("oauth: verified %s token for sub=%s", jwks_url.split("/")[2], claims.get("sub"))
