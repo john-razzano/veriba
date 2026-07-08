@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     resend_api_key: str | None = None
     resend_from_email: str = "hello@veriba.agence.studio"
+    google_ios_client_id: str | None = None
+    apple_bundle_id: str = "com.jrazzano.proveagence"
     widget_rate_limit: str = "100/minute"
     patient_rate_limit: str = "10/minute"
     max_upload_bytes: int = Field(default=10 * 1024 * 1024)

@@ -19,8 +19,9 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models import Practice, RefreshToken, Role, User
-from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest
+from app.schemas.auth import LoginRequest, OAuthRequest, RefreshRequest, RegisterRequest
 from app.services.logic import derive_initials, normalize_website, unique_widget_slug
+from app.services.oauth import verify_apple, verify_google
 from app.services.serializers import serialize_practice, serialize_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -112,7 +113,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email.lower()))
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None or user.password_hash is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     tokens = issue_tokens(db, user)
@@ -149,6 +150,73 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     tokens = issue_tokens(db, user)
     db.commit()
     return success_response(tokens)
+
+
+@router.post("/oauth")
+def oauth_login(payload: OAuthRequest, db: Session = Depends(get_db)):
+    settings = get_settings()
+    try:
+        if payload.provider == "google":
+            if not settings.google_ios_client_id:
+                raise HTTPException(status_code=503, detail="Google sign-in not configured")
+            claims = verify_google(payload.id_token, settings.google_ios_client_id)
+        else:  # apple
+            claims = verify_apple(payload.id_token, settings.apple_bundle_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Sign-in failed")
+
+    provider = payload.provider
+    subject = claims["sub"]
+    raw_email = claims.get("email", "") or ""
+    email = raw_email.strip().lower() or None
+    email_verified = bool(claims.get("email_verified", False))
+
+    # 1. Subject match → existing linked account
+    user = db.scalar(
+        select(User).where(User.auth_provider == provider, User.oauth_subject == subject)
+    )
+
+    # 2. Verified email match → link provider to existing account
+    if user is None and email and email_verified:
+        user = db.scalar(select(User).where(User.email == email))
+        if user:
+            user.auth_provider = provider
+            user.oauth_subject = subject
+            db.add(user)
+
+    # 3. Create new member
+    if user is None:
+        if not email:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "We couldn't retrieve your account email — remove Veriba from "
+                    "Settings → Apple ID → Sign-In & Security and try again."
+                ),
+            )
+        name = (
+            payload.full_name
+            or claims.get("name", "")
+            or email.split("@")[0]
+        ).strip() or "User"
+        user = User(
+            email=email,
+            password_hash=None,
+            name=name,
+            initials=derive_initials(name),
+            role=Role.member.value,
+            auth_provider=provider,
+            oauth_subject=subject,
+        )
+        db.add(user)
+        db.flush()
+
+    tokens = issue_tokens(db, user)
+    db.commit()
+    db.refresh(user)
+    return success_response({**tokens, "user": serialize_user(user)})
 
 
 @router.post("/logout")

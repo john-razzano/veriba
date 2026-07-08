@@ -28,3 +28,9 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
+
+
+class OAuthRequest(BaseModel):
+    provider: Literal["google", "apple"]
+    id_token: str = Field(min_length=1)
+    full_name: str | None = None  # Apple sends name only on first auth

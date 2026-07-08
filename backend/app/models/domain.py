@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.security import utcnow
@@ -114,15 +114,20 @@ class Practice(Base, TimestampMixin):
 
 class User(Base, TimestampMixin):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("auth_provider", "oauth_subject", name="uq_user_auth_subject"),
+    )
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     initials: Mapped[str] = mapped_column(String(5), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default=Role.owner.value)
+    auth_provider: Mapped[str] = mapped_column(String(20), default="email")
+    oauth_subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     practice_id: Mapped[str | None] = mapped_column(
         ForeignKey("practices.id"), index=True, nullable=True
     )
