@@ -1,4 +1,4 @@
-"""Tests for GROWTH-SPEC §6: member-linked followups (patient_user_id, push at send-time)."""
+"""Tests for GROWTH-SPEC §6 + §7: member-linked followups."""
 
 import base64
 from unittest.mock import MagicMock, patch
@@ -308,3 +308,68 @@ def test_push_copy_pending_after_vs_approval(client):
     # body is positional arg 2 or keyword
     body_arg = args[2] if len(args) > 2 else call.get("body", "")
     assert "after photo" in body_arg.lower() or "upload" in body_arg.lower()
+
+
+# ---------------------------------------------------------------------------
+# §7: patient_email optional when patient_user_id provided
+# ---------------------------------------------------------------------------
+
+def test_create_followup_with_user_id_only_no_email(client):
+    """QR path: patient_user_id alone is enough; stored email is user's account email."""
+    from app.db.session import SessionLocal
+    from app.models import Followup
+    from sqlalchemy import select
+
+    provider_token, _ = _register_provider(client, "s7_prov@test.com")
+    member_token, member_id = _register_member(client, "s7_mem@test.com")
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    sid = _session_with_images(client, provider_token)
+
+    r = client.post(f"/api/sessions/{sid}/followup", headers=ph, json={
+        "patient_user_id": member_id,
+        "send_at": "2020-01-01T00:00:00Z",
+        # no patient_email
+    })
+    assert r.status_code == 201
+    d = r.json()["data"]
+
+    # Response must NOT expose the auto-resolved email
+    assert d["patient_email"] is None
+
+    # member_match is still populated
+    assert d["member_match"] is not None
+    assert d["member_match"]["id"] == member_id
+
+    # DB record holds the linked user's own email internally
+    with SessionLocal() as db:
+        fu = db.scalar(select(Followup).where(Followup.id == d["id"]))
+        assert fu.patient_email == "s7_mem@test.com"
+
+
+def test_create_followup_with_neither_email_nor_user_id_returns_422(client):
+    """Both absent → 422."""
+    provider_token, _ = _register_provider(client, "s7_prov2@test.com")
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    sid = _session_with_images(client, provider_token)
+
+    r = client.post(f"/api/sessions/{sid}/followup", headers=ph, json={
+        "send_at": "2020-01-01T00:00:00Z",
+        # neither patient_email nor patient_user_id
+    })
+    assert r.status_code == 422
+
+
+def test_email_only_path_unchanged(client):
+    """Existing email-only path still works and returns patient_email in response."""
+    provider_token, _ = _register_provider(client, "s7_prov3@test.com")
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    sid = _session_with_images(client, provider_token)
+
+    r = client.post(f"/api/sessions/{sid}/followup", headers=ph, json={
+        "patient_email": "noapp@example.com",
+        "send_at": "2020-01-01T00:00:00Z",
+    })
+    assert r.status_code == 201
+    d = r.json()["data"]
+    assert d["patient_email"] == "noapp@example.com"
+    assert d["member_match"] is None

@@ -62,19 +62,27 @@ def create_followup(
     from fastapi import HTTPException as _HTTPException
     session = ensure_session_belongs_to_practice(db, session_id, practice.id)
 
-    # Validate patient_user_id when provided
+    # Validate patient_user_id when provided; resolve email server-side if omitted
     patient_user_id = None
+    linked_user = None
     if payload.patient_user_id:
         linked_user = db.get(User, payload.patient_user_id)
         if linked_user is None or linked_user.role != Role.member.value:
             raise _HTTPException(status_code=422, detail="patient_user_id must refer to an existing member account")
         patient_user_id = payload.patient_user_id
 
+    if payload.patient_email:
+        patient_email = payload.patient_email.lower()
+    else:
+        # QR-linked path: no explicit email — use the linked user's own account email
+        # for internal DB record / future email flows; never reflected back in response
+        patient_email = linked_user.email  # guaranteed non-None (validator above ensures user_id present)
+
     scheduled_for = followup_send_at(session, payload.send_at)
     followup = Followup(
         session_id=session.id,
         practice_id=practice.id,
-        patient_email=payload.patient_email.lower(),
+        patient_email=patient_email,
         patient_user_id=patient_user_id,
         patient_first_name=payload.patient_first_name,
         upload_token=create_upload_token(),

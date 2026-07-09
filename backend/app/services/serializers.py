@@ -201,7 +201,8 @@ def serialize_followup(followup: Followup, db=None) -> dict:
     return {
         "id": followup.id,
         "session_id": followup.session_id,
-        "patient_email": followup.patient_email,
+        # Suppress email for QR-linked followups; providers see member_match instead
+        "patient_email": None if followup.patient_user_id else followup.patient_email,
         "patient_user_id": followup.patient_user_id,
         "patient_first_name": followup.patient_first_name,
         "send_at": _iso(followup.send_at),
