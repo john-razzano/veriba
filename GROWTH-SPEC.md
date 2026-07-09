@@ -267,3 +267,50 @@ forces a redundant field. Relax it.
 - Existing email-only path unaffected.
 
 Report: test count, any deviations.
+
+---
+
+# §8 In-app after-photo upload for members (added July 8)
+
+Today a member reviewing a `pending_after` case (no after photo yet) lands on
+the same `/approval/{id}` consent screen as a complete case — but nothing
+gates the consent options on the after photo existing, so a member could sign
+off on publishing a photo pair that doesn't exist yet. The web-only fallback
+(`POST /patient/upload/{token}/photo`, token-based, no login) already has all
+the processing logic; we need an **authenticated** equivalent so a logged-in
+member can add the photo in-app instead of only via the emailed web link.
+
+## Endpoint
+
+`POST /api/me/approvals/{followup_id}/photo` (member auth, multipart
+`file`):
+
+- Resolve the followup the same way `respond` does: 404 unless it belongs to
+  the current member (`patient_user_id == me.id` OR
+  `patient_user_id IS NULL AND lower(patient_email) == lower(me.email)`).
+- 409 if `followup.status` is `expired`/`cancelled`/`completed`, or if the
+  session already has an `after_image_key` (photo already added — re-upload
+  isn't this endpoint's job).
+- Otherwise, run the **exact same processing** as
+  `upload_patient_photo` in `app/api/routes/patient.py`: compress, hash,
+  blurhash, set `after_image_key`/`after_original_image_key`/dimensions/
+  `after_capture_hash`/`after_captured_at`, `after_provenance = "Uploaded by
+  patient in-app"` (distinct string from the web-link path, for the
+  provenance audit trail), `session.status = pending_consent`. Do **not**
+  touch `followup.status` or create a credit here — unlike the web flow,
+  consent is a separate explicit step the member takes right after via the
+  existing `respond` endpoint, so leave the followup `sent`/`opened` as-is.
+- Response: the same shape as `serialize_public_case_study`/approval item's
+  `session` sub-object (`before_image_url`, `after_image_url`, blurhashes)
+  so the app can update its local state without a full re-fetch.
+
+## Tests
+
+- Happy path: upload → 200, session status becomes `pending_consent`,
+  `after_image_key` set, response includes `after_image_url`.
+- 409 when session already has an after photo.
+- 404 for a followup that isn't the caller's (email or user_id mismatch).
+- 404/409 for expired/cancelled/completed followup status.
+- Existing `/patient/upload/{token}/photo` (web link) path unaffected.
+
+Report: test count, any deviations.
