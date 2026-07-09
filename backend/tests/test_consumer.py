@@ -315,7 +315,8 @@ def test_results_does_not_show_other_users_sessions(client):
     assert r.json()["data"]["total"] == 0
 
 
-def test_approval_respond_wrong_user_gets_403(client):
+def test_approval_respond_wrong_user_gets_404(client):
+    """Wrong user gets 404 (not 403) — safer: doesn't confirm resource exists."""
     provider_token, _ = _register_provider(client, "prov4@test.com")
     _register_member(client, "owner@test.com")
     intruder_token = _register_member(client, "intruder@test.com")
@@ -326,7 +327,7 @@ def test_approval_respond_wrong_user_gets_403(client):
     r = client.post(f"/api/me/approvals/{followup_id}/respond",
         headers={"Authorization": f"Bearer {intruder_token}"},
         json={"decision": "full_blur", "signature_svg": _SVG})
-    assert r.status_code == 403
+    assert r.status_code == 404
 
 
 def test_approval_respond_already_completed_gets_409(client):

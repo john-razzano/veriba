@@ -169,7 +169,12 @@ def ensure_followup_belongs_to_session(
 
 
 def expire_followup_if_needed(followup: Followup) -> None:
-    if followup.token_expires_at < utcnow() and followup.status not in {
+    # Strip timezone for cross-DB compatibility (SQLite=naive, PostgreSQL=tz-aware)
+    expires = followup.token_expires_at
+    now = utcnow()
+    if expires.tzinfo is None:
+        now = now.replace(tzinfo=None)
+    if expires < now and followup.status not in {
         FollowupStatus.completed.value,
         FollowupStatus.cancelled.value,
     }:

@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -26,8 +26,10 @@ from app.models import (
 )
 from app.schemas.me import ApprovalRespondRequest, ConsultCreateRequest, PushTokenDeleteRequest, PushTokenRequest
 from app.services.consent import apply_consent
+from app.services.images import compress_for_web, compute_blurhash, image_hash, read_upload_bytes
 from app.services.logic import query_total
 from app.services.serializers import _image_url, serialize_consult, serialize_public_practice, serialize_public_session_card
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/me", tags=["consumer"])
 
@@ -292,6 +294,20 @@ def list_approvals(
     return success_response({"approvals": items})
 
 
+def _resolve_approval(followup_id: str, current_user: User, db: Session) -> Followup:
+    """Load a followup and verify it belongs to current_user (user_id wins, else email)."""
+    followup = db.get(Followup, followup_id)
+    if followup is None:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    owns = (
+        followup.patient_user_id == current_user.id
+        or followup.patient_email.lower() == current_user.email.lower()
+    )
+    if not owns:
+        raise HTTPException(status_code=404, detail="Approval not found")
+    return followup
+
+
 @router.post("/approvals/{followup_id}/respond")
 def respond_to_approval(
     followup_id: str,
@@ -299,12 +315,7 @@ def respond_to_approval(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    followup = db.get(Followup, followup_id)
-    if followup is None:
-        raise HTTPException(status_code=404, detail="Approval not found")
-
-    if followup.patient_email.lower() != current_user.email.lower():
-        raise HTTPException(status_code=403, detail="This approval does not belong to you")
+    followup = _resolve_approval(followup_id, current_user, db)
 
     if followup.status == FollowupStatus.completed.value:
         raise HTTPException(status_code=409, detail="This approval has already been completed")
@@ -334,6 +345,66 @@ def respond_to_approval(
     return success_response({
         "consent_tier": result.consent_tier,
         "reward_earned": result.reward,
+    })
+
+
+# ---------------------------------------------------------------------------
+# After-photo upload (in-app, member side)
+# ---------------------------------------------------------------------------
+
+@router.post("/approvals/{followup_id}/photo")
+async def upload_approval_photo(
+    followup_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    followup = _resolve_approval(followup_id, current_user, db)
+
+    if followup.status in {
+        FollowupStatus.expired.value,
+        FollowupStatus.cancelled.value,
+        FollowupStatus.completed.value,
+    }:
+        raise HTTPException(status_code=409, detail="This followup is no longer active")
+
+    photo_session = db.get(PhotoSession, followup.session_id)
+    if photo_session.after_image_key:
+        raise HTTPException(status_code=409, detail="After photo already uploaded")
+
+    # Same pipeline as upload_patient_photo in patient.py
+    original = await read_upload_bytes(file)
+    compressed, width, height = compress_for_web(original)
+    server_hash = image_hash(original)
+    storage = get_storage()
+    prefix = f"{photo_session.practice_id}/sessions/{photo_session.id}/after"
+    ext = (file.filename.split(".")[-1] if file.filename and "." in file.filename else "jpg").lower()
+    original_key = f"{prefix}/original.{ext}"
+    web_key = f"{prefix}/web.jpg"
+    storage.save_bytes(original_key, original)
+    storage.save_bytes(web_key, compressed)
+
+    photo_session.after_original_image_key = original_key
+    photo_session.after_image_key = web_key
+    photo_session.after_image_width = width
+    photo_session.after_image_height = height
+    photo_session.after_blurhash = compute_blurhash(compressed)
+    photo_session.after_capture_hash = server_hash
+    photo_session.after_captured_at = utcnow()
+    photo_session.after_provenance = "Uploaded by patient in-app"
+    photo_session.status = SessionStatus.pending_consent.value
+
+    # Do NOT touch followup.status or create a credit — consent is a separate step
+    db.add(photo_session)
+    db.commit()
+
+    return success_response({
+        "session": {
+            "id": photo_session.id,
+            "status": photo_session.status,
+            "after_image_url": storage.public_url(web_key),
+            "after_blurhash": photo_session.after_blurhash,
+        }
     })
 
 
