@@ -234,3 +234,36 @@ match against member-role users. Apply this single rule in:
 - lookup endpoint: practice-auth only, exact match, no email leakage.
 - Push fires at send time not create time; reminder sends push again;
   respects send_at delay. Full suite green; report migration number + count.
+
+---
+
+# §7 QR-linked followups: email becomes optional (added July 8)
+
+The provider-side wizard now leads with "scan the patient's Veriba code"
+(QR → `patient_user_id`) and only falls back to a typed email when scanning
+isn't possible (patient has no app, forgot phone, etc). Right now
+`patient_email` is required even when `patient_user_id` is present, which
+forces a redundant field. Relax it.
+
+## Change
+
+`POST /api/sessions/{id}/followup`:
+- `patient_email` becomes optional in the request body.
+- Validation: require **either** `patient_email` **or** `patient_user_id`.
+  422 if both are absent.
+- When `patient_user_id` is given and `patient_email` is omitted, resolve the
+  linked user and use **their own account email** as `followups.patient_email`
+  internally (for the DB record / any future email-based flows). Do not
+  return that email to the practice in the serializer — providers already
+  only see `member_match: {id, name, initials}`, keep it that way.
+- When `patient_user_id` is absent, behavior is unchanged: `patient_email`
+  required, this is the no-app fallback path (emailed upload link).
+
+## Tests
+
+- Create with `patient_user_id` only, no email → 201, followup's stored
+  `patient_email` is the linked user's account email, response doesn't leak it.
+- Create with neither `patient_email` nor `patient_user_id` → 422.
+- Existing email-only path unaffected.
+
+Report: test count, any deviations.
