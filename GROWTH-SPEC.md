@@ -314,3 +314,53 @@ member can add the photo in-app instead of only via the emailed web link.
 - Existing `/patient/upload/{token}/photo` (web link) path unaffected.
 
 Report: test count, any deviations.
+
+---
+
+# §9 Member-facing rewards list (added July 12)
+
+The app's Inbox activity feed already surfaces "You earned a $150 reward at
+{practice}" and "expires soon" events (`GET /api/me/activity`, kinds
+`credit_earned`/`credit_expiring`), but tapping either currently 404s in the
+app — the frontend was routing to the public case page, and a credit's
+session isn't always publicly published (e.g. blurred/partial consent tiers
+still earn a reward without going public). Members need an actual place to
+see their rewards, and the activity events need enough data to deep-link
+there instead of into the public feed.
+
+## New endpoint
+
+`GET /api/me/credits` (member auth, no query params for now):
+
+- Same ownership filter `list_activity` already uses for credits:
+  `func.lower(Credit.patient_email) == current_user.email.lower()` (this
+  already correctly covers QR-linked members too, since §7 backfills
+  `followup.patient_email`/`credit.patient_email` with the linked account's
+  own email even when no email was typed).
+- Newest first (`earned_at desc`).
+- Per item, reuse `serialize_credit` and add on top: `practice: {id, name,
+  location}` and `session: {id, treatment, after_image_url}` (thumbnail so
+  the list isn't just text) — `after_image_url` via the existing
+  `_image_url` helper, falling back to `before_image_url` if
+  `after_image_key` isn't set (can be null, that's fine).
+- Response: `{"credits": [...], "total": n}`.
+
+## Activity event change
+
+In `list_activity`, add `"credit_id": credit.id` to both the `credit_earned`
+and `credit_expiring` event dicts (alongside the existing `session_id`) so
+the app can deep-link to the specific reward rather than guessing from
+session_id.
+
+## Tests
+
+- Member with 2 credits at different practices → both returned, newest
+  first, correct practice/session nesting.
+- Member with zero credits → `{"credits": [], "total": 0}`, 200 not 404.
+- Credit belonging to a different member's email is excluded.
+- QR-linked credit (no typed email on the followup) still appears — confirms
+  the §7 email-backfill makes the plain email-match filter sufficient.
+- `list_activity` response now includes `credit_id` on `credit_earned` and
+  `credit_expiring` events; existing fields unchanged.
+
+Report: test count, any deviations.
