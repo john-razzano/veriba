@@ -28,7 +28,7 @@ from app.schemas.me import ApprovalRespondRequest, ConsultCreateRequest, PushTok
 from app.services.consent import apply_consent
 from app.services.images import compress_for_web, compute_blurhash, image_hash, read_upload_bytes
 from app.services.logic import query_total
-from app.services.serializers import _image_url, serialize_consult, serialize_public_practice, serialize_public_session_card
+from app.services.serializers import _image_url, serialize_consult, serialize_credit, serialize_public_practice, serialize_public_session_card
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/me", tags=["consumer"])
@@ -500,6 +500,46 @@ def delete_push_token(
 
 
 # ---------------------------------------------------------------------------
+# Rewards / credits list
+# ---------------------------------------------------------------------------
+
+@router.get("/credits")
+def list_my_credits(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    credits = db.scalars(
+        select(Credit)
+        .where(func.lower(Credit.patient_email) == current_user.email.lower())
+        .order_by(Credit.earned_at.desc())
+    ).all()
+
+    items = []
+    for credit in credits:
+        practice = db.get(Practice, credit.practice_id)
+        photo_session = db.get(PhotoSession, credit.session_id)
+        item = serialize_credit(credit)
+        item["practice"] = (
+            {"id": practice.id, "name": practice.name, "location": practice.location}
+            if practice else None
+        )
+        item["session"] = (
+            {
+                "id": photo_session.id,
+                "treatment": photo_session.treatment,
+                "after_image_url": (
+                    _image_url(photo_session.after_image_key)
+                    or _image_url(photo_session.before_image_key)
+                ),
+            }
+            if photo_session else None
+        )
+        items.append(item)
+
+    return success_response({"credits": items, "total": len(items)})
+
+
+# ---------------------------------------------------------------------------
 # Activity feed (Inbox)
 # ---------------------------------------------------------------------------
 
@@ -602,6 +642,7 @@ def list_activity(
             "text": f"You earned a ${credit.amount} reward at {practice.name}.",
             "timestamp": credit.earned_at,
             "session_id": credit.session_id,
+            "credit_id": credit.id,
         })
 
         # credit_expiring — active credits expiring within 21 days
@@ -612,6 +653,7 @@ def list_activity(
                 "text": f"Your ${credit.amount} reward at {practice.name} expires soon.",
                 "timestamp": credit.expires_at,
                 "session_id": credit.session_id,
+                "credit_id": credit.id,
             })
 
     for consult in consult_rows:

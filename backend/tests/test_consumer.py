@@ -474,3 +474,110 @@ def test_activity_sorted_newest_first(client):
 
     timestamps = [item["timestamp"] for item in items]
     assert timestamps == sorted(timestamps, reverse=True), "events must be newest-first"
+
+
+# ---------------------------------------------------------------------------
+# §9 Member-facing rewards list + credit_id in activity events
+# ---------------------------------------------------------------------------
+
+def _earn_credit(client, provider_token, member_email, member_token):
+    """Full flow that results in a credit: session + followup + member responds."""
+    session_id = _session_with_images(client, provider_token)
+    followup_id = _create_sent_followup(client, provider_token, session_id, member_email)
+    mh = {"Authorization": f"Bearer {member_token}"}
+    client.post(f"/api/me/approvals/{followup_id}/respond", headers=mh,
+        json={"decision": "full", "signature_svg": _SVG})
+    # Publish so after_image_url resolves
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    client.post(f"/api/sessions/{session_id}/publish", headers=ph,
+        json={"destinations": ["gallery"], "treatment_details": ""})
+    return session_id
+
+
+def test_credits_returns_earned_credits_newest_first(client):
+    provider_token, _ = _register_provider(client, "cred_prov@test.com")
+    member_token = _register_member(client, "cred_mem@test.com")
+    mh = {"Authorization": f"Bearer {member_token}"}
+
+    _earn_credit(client, provider_token, "cred_mem@test.com", member_token)
+    _earn_credit(client, provider_token, "cred_mem@test.com", member_token)
+
+    r = client.get("/api/me/credits", headers=mh)
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["total"] == 2
+    credits = data["credits"]
+    assert len(credits) == 2
+
+    # Newest first
+    assert credits[0]["earned_at"] >= credits[1]["earned_at"]
+
+    # Each item has practice and session nested
+    c = credits[0]
+    assert c["practice"]["name"] is not None
+    assert c["session"]["treatment"] is not None
+    assert "after_image_url" in c["session"]
+
+
+def test_credits_empty_for_member_with_none(client):
+    member_token = _register_member(client, "cred_empty@test.com")
+    r = client.get("/api/me/credits", headers={"Authorization": f"Bearer {member_token}"})
+    assert r.status_code == 200
+    assert r.json()["data"] == {"credits": [], "total": 0}
+
+
+def test_credits_excludes_other_members(client):
+    provider_token, _ = _register_provider(client, "cred_prov2@test.com")
+    member_a_token = _register_member(client, "cred_a@test.com")
+    member_b_token = _register_member(client, "cred_b@test.com")
+
+    _earn_credit(client, provider_token, "cred_a@test.com", member_a_token)
+
+    r = client.get("/api/me/credits", headers={"Authorization": f"Bearer {member_b_token}"})
+    assert r.json()["data"]["total"] == 0
+
+
+def test_credits_qr_linked_member_sees_credit(client):
+    """QR-linked followup (patient_user_id, no typed email): §7 backfills account email
+    onto followup.patient_email, so the plain email filter still finds the credit."""
+    provider_token, _ = _register_provider(client, "cred_prov3@test.com")
+    member_token = _register_member(client, "cred_qr@test.com")
+    member_id = client.get("/api/users/me",
+        headers={"Authorization": f"Bearer {member_token}"}).json()["data"]["id"]
+    ph = {"Authorization": f"Bearer {provider_token}"}
+    mh = {"Authorization": f"Bearer {member_token}"}
+
+    session_id = _session_with_images(client, provider_token)
+
+    # Create followup via patient_user_id only (no email)
+    fid_r = client.post(f"/api/sessions/{session_id}/followup", headers=ph, json={
+        "patient_user_id": member_id,
+        "send_at": "2020-01-01T00:00:00Z",
+    })
+    assert fid_r.status_code == 201
+    followup_id = fid_r.json()["data"]["id"]
+
+    # Member responds → credit created with account email as patient_email
+    client.post(f"/api/me/approvals/{followup_id}/respond", headers=mh,
+        json={"decision": "full", "signature_svg": _SVG})
+
+    r = client.get("/api/me/credits", headers=mh)
+    assert r.json()["data"]["total"] == 1
+
+
+def test_activity_credit_events_include_credit_id(client):
+    provider_token, _ = _register_provider(client, "cred_prov4@test.com")
+    member_token = _register_member(client, "cred_act@test.com")
+
+    _earn_credit(client, provider_token, "cred_act@test.com", member_token)
+
+    activity = client.get("/api/me/activity",
+        headers={"Authorization": f"Bearer {member_token}"})
+    items = activity.json()["data"]["items"]
+
+    credit_events = [i for i in items if i["kind"] in ("credit_earned", "credit_expiring")]
+    assert len(credit_events) >= 1
+    for event in credit_events:
+        assert "credit_id" in event, f"credit_id missing from {event['kind']}"
+        assert event["credit_id"] is not None
+        assert "session_id" in event  # existing field still present
